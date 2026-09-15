@@ -1,0 +1,22 @@
+seed: 42
+
+preprocess:
+  target_sr: 16000
+  normalize: true
+
+diarization:
+  backend: pyannote
+  max_speakers: 6
+
+asr:
+  model_name: vinai/PhoWhisper-medium
+  language: vi
+
+confidence:
+  variant: full
+  target_coverage: 0.20
+
+paths:
+  data_dir: ./data
+  results_dir: ./results
+  cache_dir: ./.cache

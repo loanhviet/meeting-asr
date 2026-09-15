@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment and editor files
+.env
+.DS_Store
+.idea/
+.vscode/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node.js
+web/node_modules/
+web/.next/
+
+# Generated project artifacts
+.cache/
+data/**
+!data/**/.gitkeep
+results/**
+!results/**/.gitkeep
