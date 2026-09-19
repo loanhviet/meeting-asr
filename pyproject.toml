@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meeting-asr"
+version = "0.1.0"
+description = "Vietnamese meeting minutes ASR research pipeline"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "numpy>=1.26,<3",
+  "PyYAML>=6.0,<7",
+  "pyloudnorm>=0.1.1,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
+
+[project.scripts]
+meeting-asr = "meeting_asr.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meeting_asr"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"configs/default.yaml" = "meeting_asr/configs/default.yaml"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

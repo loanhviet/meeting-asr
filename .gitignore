@@ -14,6 +14,9 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+dist/
+build/
+*.egg-info/
 
 # Node.js
 web/node_modules/
@@ -21,7 +24,7 @@ web/.next/
 
 # Generated project artifacts
 .cache/
-data/**
-!data/**/.gitkeep
-results/**
-!results/**/.gitkeep
+docs/
+data/
+results/*
+!results/experiments.csv

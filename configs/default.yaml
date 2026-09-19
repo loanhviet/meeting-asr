@@ -3,18 +3,56 @@ seed: 42
 preprocess:
   target_sr: 16000
   normalize: true
+  denoise: false
+  max_duration_sec: 1800
 
 diarization:
   backend: pyannote
+  min_speakers: null
   max_speakers: 6
+  min_segment_duration: 0.3
+  ecapa:
+    vad_threshold: 0.5
+    window_size: 1.5
+    hop_size: 0.75
+    cluster_threshold: 0.7
+    overlap_detector: pyannote/segmentation-3.0
 
 asr:
   model_name: vinai/PhoWhisper-medium
   language: vi
+  batch_size: 8
+  max_segment_sec: 28.0
+  min_segment_sec: 0.3
+  boundary_pad: 0.1
+  temperature: 0.0
+  masking: none
+
+postprocess:
+  merge_gap: 0.8
+  remove_fillers: false
 
 confidence:
   variant: full
   target_coverage: 0.20
+  margin_ref_percentile: 90
+  weights:
+    asr: 0.30
+    speech: 0.10
+    rep: 0.10
+    ovl: 0.25
+    spk: 0.15
+    dur: 0.10
+
+llm:
+  enabled: false
+  provider: null
+  model: null
+
+evaluation:
+  der_collar: [0.25, 0.0]
+  skip_overlap: [true, false]
+  turn_wer_threshold: [0.20, 0.30, 0.50]
 
 paths:
   data_dir: ./data

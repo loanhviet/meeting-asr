@@ -1,1 +1,0 @@
-"""Core meeting ASR pipeline."""
