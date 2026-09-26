@@ -12,6 +12,7 @@ from meeting_asr.cache import load_audio_bundle, save_audio_bundle, stage_key
 from meeting_asr.data_gen.prepare import prepare_dataset
 from meeting_asr.data_gen.simulate import load_clips, read_mono_wav, simulate_matrix, write_session
 from meeting_asr.io import read_rttm
+from meeting_asr.pipeline import run_pipeline
 from meeting_asr.preprocess import preprocess
 from meeting_asr.runtime import set_seed, write_run_manifest
 from meeting_asr.settings import DEFAULT_CONFIG, PROJECT_ROOT, load_config
@@ -109,6 +110,30 @@ def _run_prepare(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_pipeline(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    if args.backend:
+        config["diarization"]["backend"] = args.backend
+    if args.device:
+        config.setdefault("runtime", {})["device"] = args.device
+    if args.batch_size:
+        config["asr"]["batch_size"] = args.batch_size
+    minutes = run_pipeline(
+        args.audio, config, args.out, no_cache=args.no_cache, oracle_rttm=args.oracle_rttm
+    )
+    print(
+        json.dumps(
+            {
+                "audio_id": minutes.audio_id,
+                "turns": len(minutes.turns),
+                "speakers": minutes.num_speakers,
+                "out": str(Path(args.out).resolve()),
+            }
+        )
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="meeting-asr")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -142,6 +167,17 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--seed", type=int, default=42)
     prepare_parser.add_argument("--exclude-hashes")
     prepare_parser.set_defaults(handler=_run_prepare)
+
+    run_parser = subcommands.add_parser("run", help="run restartable meeting pipeline")
+    run_parser.add_argument("audio")
+    run_parser.add_argument("--out", required=True)
+    run_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    run_parser.add_argument("--backend", choices=["pyannote", "ecapa"])
+    run_parser.add_argument("--device", choices=["auto", "cpu", "cuda"])
+    run_parser.add_argument("--batch-size", type=int)
+    run_parser.add_argument("--oracle-rttm")
+    run_parser.add_argument("--no-cache", action="store_true")
+    run_parser.set_defaults(handler=_run_pipeline)
 
     args = parser.parse_args(argv)
     try:

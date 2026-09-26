@@ -10,8 +10,10 @@ from meeting_asr.models import (
     SCHEMA_VERSION,
     ASRSignals,
     DiarSignals,
+    MeetingMinutes,
     Segment,
     TranscriptDocument,
+    Turn,
     Utterance,
 )
 
@@ -90,3 +92,28 @@ def read_transcript_json(path: str | Path) -> TranscriptDocument:
     if result.num_speakers != payload["num_speakers"]:
         raise ValueError("transcript num_speakers disagrees with utterances")
     return result
+
+
+def minutes_from_dict(payload: dict) -> MeetingMinutes:
+    payload = dict(payload)
+    payload.pop("schema_version", None)
+    turns = []
+    for item in payload.pop("turns"):
+        item = dict(item)
+        utterances = []
+        for raw in item.pop("utterances"):
+            raw = dict(raw)
+            raw["asr"] = ASRSignals(**raw["asr"])
+            raw["diar"] = DiarSignals(**raw["diar"]) if raw.get("diar") else None
+            utterances.append(Utterance(**raw))
+        turns.append(Turn(**item, utterances=utterances))
+    return MeetingMinutes(**payload, turns=turns)
+
+
+def write_minutes_json(path: str | Path, minutes: MeetingMinutes) -> None:
+    _atomic_text(
+        path,
+        json.dumps(
+            {"schema_version": SCHEMA_VERSION, **asdict(minutes)}, ensure_ascii=False, indent=2
+        ),
+    )
