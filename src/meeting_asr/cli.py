@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from meeting_asr.cache import load_audio_bundle, save_audio_bundle, stage_key
+from meeting_asr.data_gen.simulate import load_clips, simulate_matrix, write_session
 from meeting_asr.io import read_rttm
 from meeting_asr.preprocess import preprocess
 from meeting_asr.runtime import set_seed, write_run_manifest
@@ -54,6 +55,31 @@ def _run_preprocess(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_simulate(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    seed = int(config["seed"] if args.seed is None else args.seed)
+    set_seed(seed)
+    sessions = simulate_matrix(load_clips(args.manifest), seed=seed, index=args.index)
+    out_dir = _project_path(args.out)
+    written = []
+    for session in sessions:
+        wav_path = write_session(out_dir, session)
+        written.append(
+            {
+                "stem": session.stem,
+                "wav": str(wav_path),
+                "overlap_target": session.overlap_target,
+                "overlap_actual": round(session.overlap_actual, 4),
+                "snr_db": session.snr_db,
+                "snr_actual_db": None
+                if session.snr_actual_db is None
+                else round(session.snr_actual_db, 3),
+            }
+        )
+    print(json.dumps({"seed": seed, "sessions": written}, ensure_ascii=False, indent=2))
+    return 0
+
+
 def _run_rttm_validate(args: argparse.Namespace) -> int:
     segments = read_rttm(args.path, expected_file_id=args.file_id)
     print(json.dumps({"segments": len(segments)}, ensure_ascii=False))
@@ -69,6 +95,16 @@ def main(argv: list[str] | None = None) -> int:
     preprocess_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     preprocess_parser.add_argument("--no-cache", action="store_true")
     preprocess_parser.set_defaults(handler=_run_preprocess)
+
+    simulate_parser = subcommands.add_parser(
+        "simulate", help="mix clean clips into the nine acoustic conditions"
+    )
+    simulate_parser.add_argument("manifest")
+    simulate_parser.add_argument("--out", required=True)
+    simulate_parser.add_argument("--index", type=int, required=True)
+    simulate_parser.add_argument("--seed", type=int)
+    simulate_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    simulate_parser.set_defaults(handler=_run_simulate)
 
     rttm_parser = subcommands.add_parser("rttm-validate", help="validate one RTTM file")
     rttm_parser.add_argument("path")

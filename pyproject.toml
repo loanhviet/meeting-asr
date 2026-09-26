@@ -12,6 +12,8 @@ dependencies = [
   "numpy>=1.26,<3",
   "PyYAML>=6.0,<7",
   "pyloudnorm>=0.1.1,<1",
+  "jiwer>=4,<5",
+  "pyannote.metrics>=4,<5",
 ]
 
 [project.optional-dependencies]
