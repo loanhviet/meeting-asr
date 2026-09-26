@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -159,5 +159,21 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
             job_id, status="queued", stage="queued", kind="summary", progress=0, error=None
         )
         return {"job_id": job_id}
+
+    @app.get("/api/jobs/{job_id}/export")
+    def export(job_id: str, fmt: str = "md"):
+        from meeting_asr.export import export_result
+
+        try:
+            content, media_type = export_result(store.result(job_id), fmt)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        return Response(
+            content,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="meeting_{job_id}.{fmt}"',
+            },
+        )
 
     return app
