@@ -21,6 +21,11 @@ build/
 # Node.js
 web/node_modules/
 web/.next/
+web/*.tsbuildinfo
+web/.env*
+!web/.env.example
+web/playwright-report/
+web/test-results/
 
 # Generated project artifacts
 .cache/
