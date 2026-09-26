@@ -9,8 +9,11 @@ import time
 from pathlib import Path
 
 from meeting_asr.cache import load_audio_bundle, save_audio_bundle, stage_key
+from meeting_asr.data_gen.dataset import build_dataset
 from meeting_asr.data_gen.prepare import prepare_dataset
 from meeting_asr.data_gen.simulate import load_clips, read_mono_wav, simulate_matrix, write_session
+from meeting_asr.evaluation.confidence import calibrate_margin, run_confidence_evaluation
+from meeting_asr.evaluation.experiments import run_experiments
 from meeting_asr.io import read_rttm
 from meeting_asr.pipeline import run_pipeline
 from meeting_asr.preprocess import preprocess
@@ -134,6 +137,37 @@ def _run_pipeline(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_dataset(args):
+    payload = build_dataset(
+        args.manifest,
+        args.out,
+        conversations=args.conversations,
+        clips_per_speaker=args.clips_per_speaker,
+        seed=args.seed,
+        noise=args.noise,
+    )
+    print(json.dumps({"sessions": len(payload["sessions"]), "out": args.out}))
+    return 0
+
+
+def _run_experiments(args):
+    backends = ("pyannote", "ecapa") if args.backend == "all" else (args.backend,)
+    rows = run_experiments(args.manifest, load_config(args.config), args.out, backends)
+    print(json.dumps({"rows": len(rows), "out": args.out}))
+    return 0
+
+
+def _run_rq3(args):
+    results = run_confidence_evaluation(args.manifest, load_config(args.config), args.out)
+    print(json.dumps({"sessions": len(results), "out": args.out}))
+    return 0
+
+
+def _run_calibrate(args):
+    print(json.dumps(calibrate_margin(args.manifest, args.out, args.percentile), indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="meeting-asr")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -178,6 +212,38 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--oracle-rttm")
     run_parser.add_argument("--no-cache", action="store_true")
     run_parser.set_defaults(handler=_run_pipeline)
+
+    dataset_parser = subcommands.add_parser("build-dataset", help="build pilot or main conditions")
+    dataset_parser.add_argument("manifest")
+    dataset_parser.add_argument("--out", required=True)
+    dataset_parser.add_argument("--conversations", type=int, default=2)
+    dataset_parser.add_argument("--clips-per-speaker", type=int, default=6)
+    dataset_parser.add_argument("--seed", type=int, default=42)
+    dataset_parser.add_argument("--noise")
+    dataset_parser.set_defaults(handler=_run_dataset)
+
+    experiments_parser = subcommands.add_parser("experiments", help="run RQ1/RQ2 with paired data")
+    experiments_parser.add_argument("manifest")
+    experiments_parser.add_argument("--out", required=True)
+    experiments_parser.add_argument(
+        "--backend", choices=["all", "pyannote", "ecapa"], default="all"
+    )
+    experiments_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    experiments_parser.set_defaults(handler=_run_experiments)
+
+    rq3_parser = subcommands.add_parser("evaluate-confidence", help="RQ3 ablation and risk curves")
+    rq3_parser.add_argument("manifest")
+    rq3_parser.add_argument("--out", required=True)
+    rq3_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    rq3_parser.set_defaults(handler=_run_rq3)
+
+    calibration_parser = subcommands.add_parser(
+        "calibrate-confidence", help="fit margin scale on dev"
+    )
+    calibration_parser.add_argument("manifest")
+    calibration_parser.add_argument("--out", required=True)
+    calibration_parser.add_argument("--percentile", type=float, default=90)
+    calibration_parser.set_defaults(handler=_run_calibrate)
 
     args = parser.parse_args(argv)
     try:
