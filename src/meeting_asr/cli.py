@@ -294,6 +294,23 @@ def main(argv: list[str] | None = None) -> int:
     )
     doctor_parser.set_defaults(handler=_run_doctor)
 
+    demo_parser = subcommands.add_parser(
+        "demo-audio", help="generate synthetic Vietnamese demo audio"
+    )
+    demo_parser.add_argument("--out", default="data/demo")
+    demo_parser.add_argument("--cache", default=".cache/demo-tts")
+
+    def run_demo(args):
+        import asyncio
+
+        from meeting_asr.data_gen.demo import generate_demo
+
+        payload = asyncio.run(generate_demo(_project_path(args.out), _project_path(args.cache)))
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    demo_parser.set_defaults(handler=run_demo)
+
     serve_parser = subcommands.add_parser("serve", help="start the local API and single worker")
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8000)
