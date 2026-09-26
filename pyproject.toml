@@ -13,11 +13,21 @@ dependencies = [
   "PyYAML>=6.0,<7",
   "pyloudnorm>=0.1.1,<1",
   "jiwer>=4,<5",
-  "pyannote.metrics>=4,<5",
+  "pyannote.metrics>=3.2,<4",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
+inference = [
+  "torch>=2.5,<2.9",
+  "torchaudio>=2.5,<2.9",
+  "transformers>=4.45,<5",
+  "huggingface-hub>=0.28,<1",
+  "pyannote.audio==3.4.0",
+  "speechbrain>=1.0,<2",
+  "silero-vad>=6,<7",
+  "scipy>=1.13,<2",
+]
 
 [project.scripts]
 meeting-asr = "meeting_asr.cli:main"

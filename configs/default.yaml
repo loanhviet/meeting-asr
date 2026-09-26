@@ -1,5 +1,8 @@
 seed: 42
 
+runtime:
+  device: auto
+
 preprocess:
   target_sr: 16000
   normalize: true
@@ -8,6 +11,7 @@ preprocess:
 
 diarization:
   backend: pyannote
+  model_name: pyannote/speaker-diarization-3.1
   min_speakers: null
   max_speakers: 6
   min_segment_duration: 0.3
