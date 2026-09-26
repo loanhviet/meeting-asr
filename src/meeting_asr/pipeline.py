@@ -10,6 +10,7 @@ from pathlib import Path
 
 from meeting_asr.asr import transcribe
 from meeting_asr.cache import load_audio_bundle, save_audio_bundle, stage_key
+from meeting_asr.confidence import review_coverage, score_confidence
 from meeting_asr.diarization import DiarizationResult, make_backend
 from meeting_asr.evaluation.overlap import utterance_overlap_fractions
 from meeting_asr.io import (
@@ -135,6 +136,9 @@ def run_pipeline(
     notify("M4", 0.75)
     turns = postprocess(transcript.utterances, **config["postprocess"])
     minutes = MeetingMinutes(source.stem, audio.duration, transcript.num_speakers, turns)
+    notify("M5", 0.85)
+    minutes.turns = score_confidence(turns, seed=int(config["seed"]), **config["confidence"])
+    minutes.flagged_ratio = review_coverage(minutes.turns)
     write_minutes_json(destination / "minutes.json", minutes)
     elapsed = time.perf_counter() - started
     write_run_manifest(
@@ -147,6 +151,7 @@ def run_pipeline(
             "rtf": elapsed / audio.duration,
             "versions": versions,
             "warnings": audio.warnings,
+            "review_coverage": minutes.flagged_ratio,
             "oracle_rttm": str(oracle_rttm) if oracle_rttm else None,
         },
     )
