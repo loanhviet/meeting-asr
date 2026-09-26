@@ -9,7 +9,8 @@ import time
 from pathlib import Path
 
 from meeting_asr.cache import load_audio_bundle, save_audio_bundle, stage_key
-from meeting_asr.data_gen.simulate import load_clips, simulate_matrix, write_session
+from meeting_asr.data_gen.prepare import prepare_dataset
+from meeting_asr.data_gen.simulate import load_clips, read_mono_wav, simulate_matrix, write_session
 from meeting_asr.io import read_rttm
 from meeting_asr.preprocess import preprocess
 from meeting_asr.runtime import set_seed, write_run_manifest
@@ -59,7 +60,14 @@ def _run_simulate(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     seed = int(config["seed"] if args.seed is None else args.seed)
     set_seed(seed)
-    sessions = simulate_matrix(load_clips(args.manifest), seed=seed, index=args.index)
+    noise = None if args.noise is None else read_mono_wav(args.noise)[0]
+    sessions = simulate_matrix(
+        load_clips(args.manifest),
+        seed=seed,
+        index=args.index,
+        noise=noise,
+        noise_source="white" if args.noise is None else str(Path(args.noise).resolve()),
+    )
     out_dir = _project_path(args.out)
     written = []
     for session in sessions:
@@ -86,6 +94,21 @@ def _run_rttm_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_prepare(args: argparse.Namespace) -> int:
+    excluded = set()
+    if args.exclude_hashes:
+        excluded = set(Path(args.exclude_hashes).read_text().split())
+    result = prepare_dataset(
+        args.manifest,
+        args.out,
+        dev_speakers=args.dev_speakers,
+        seed=args.seed,
+        excluded_hashes=excluded,
+    )
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="meeting-asr")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -103,6 +126,7 @@ def main(argv: list[str] | None = None) -> int:
     simulate_parser.add_argument("--out", required=True)
     simulate_parser.add_argument("--index", type=int, required=True)
     simulate_parser.add_argument("--seed", type=int)
+    simulate_parser.add_argument("--noise", help="mono PCM16 16kHz noise WAV, e.g. MUSAN")
     simulate_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     simulate_parser.set_defaults(handler=_run_simulate)
 
@@ -110,6 +134,14 @@ def main(argv: list[str] | None = None) -> int:
     rttm_parser.add_argument("path")
     rttm_parser.add_argument("--file-id")
     rttm_parser.set_defaults(handler=_run_rttm_validate)
+
+    prepare_parser = subcommands.add_parser("prepare-data", help="audit and split local clips")
+    prepare_parser.add_argument("manifest")
+    prepare_parser.add_argument("--out", required=True)
+    prepare_parser.add_argument("--dev-speakers", type=int, default=3)
+    prepare_parser.add_argument("--seed", type=int, default=42)
+    prepare_parser.add_argument("--exclude-hashes")
+    prepare_parser.set_defaults(handler=_run_prepare)
 
     args = parser.parse_args(argv)
     try:
