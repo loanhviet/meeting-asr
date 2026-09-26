@@ -21,6 +21,54 @@ Kết quả mỗi lần chạy có RTTM, diarization signals, transcript thô, b
 
 ## 2. Website
 
+### Audio demo tổng hợp (không cần tự thu âm)
+
+```bash
+uv sync --locked --extra dev --extra inference --extra api --extra demo
+uv run --no-sync meeting-asr demo-audio
+```
+
+Lệnh tạo `data/demo/demo_clean.wav`, `demo_noisy.mp3`, `demo_overlap.m4a`, các
+bản WAV đi kèm và reference JSON/RTTM. Hai giọng nam/nữ tổng hợp đọc cùng nội
+dung cuộc họp khoảng 90 giây; có bản rõ, nhiễu trắng 10 dB và chồng lấn.
+Nội dung demo được gửi đến dịch vụ Microsoft Edge TTS để tạo giọng, không gửi
+token Hugging Face hoặc audio người dùng. Lần đầu cần mạng; các clip được cache.
+Script và nội dung được commit, audio sinh ra nằm trong `data/` bị Git bỏ qua.
+Không dùng giọng tổng hợp hoặc mốc ghép clip để khẳng định DER/WER trên người thật.
+
+Khi API bên dưới đang chạy, có thể kiểm tra ba định dạng upload với model thật:
+
+```bash
+uv run --no-sync python scripts/smoke_demo.py
+```
+
+Lệnh thêm ba job demo vào website, đánh dấu sửa thử ở turn đầu và đổi tên một
+speaker thành “Người nói demo”. Kiểm tra lưu sửa, bản gốc bất biến, conflict
+revision, nghe audio và export; kết quả nằm ở `results/demo-api-smoke/`.
+LLM phải tắt khi chạy để không gọi provider bên ngoài.
+
+Khi cả website và API đang chạy, kiểm tra trình duyệt với dữ liệu thật của các
+job demo (không mock API):
+
+```bash
+node scripts/smoke_demo_web.mjs
+```
+
+Script kiểm tra playback cả ba định dạng, timeline, PDF download, tìm bản sửa
+sau reload và layout mobile. Screenshot và báo cáo nằm cùng `results/demo-api-smoke/`.
+
+Để thử toàn bộ công cụ đánh giá (chỉ smoke, không phải kết quả nghiên cứu):
+
+```bash
+uv run --no-sync meeting-asr experiments data/demo/sessions.json --out results/demo-experiments
+uv run --no-sync meeting-asr evaluate-confidence results/demo-experiments/confidence_demo.json --out results/demo-confidence
+```
+
+Checkpoint Pyannote 3.x chứa metadata chưa có trong allowlist mặc định của
+Torch 2.6+. Project dùng context allowlist cố định cho bốn kiểu metadata đã
+biết, giữ weights-only loading; không tắt bảo vệ trên toàn process. Xem
+[hướng dẫn serialization của PyTorch](https://docs.pytorch.org/docs/2.8/notes/serialization.html#torch-load-with-weights-only-true).
+
 Từ thư mục gốc:
 
 ```bash
