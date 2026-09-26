@@ -37,3 +37,17 @@ def test_oom_retries_smaller_batch():
             return [Decoded("xin chào")]
 
     assert len(transcribe(audio, diar, decoder=Decoder())) == 2
+
+
+def test_silence_boundary_does_not_delete_legitimate_repeated_words():
+    waveform = np.zeros(16000 * 5, dtype=np.float32)
+    waveform[:16000] = 0.2
+    audio = AudioBundle(waveform, 16000, 16000, "fixture")
+    diar = DiarizationResult([Segment(0, 5, "A")], [DiarSignals(0)], "fixture")
+
+    class Decoder:
+        def decode(self, waves, sr):
+            return [Decoded("xin chào") for _ in waves]
+
+    results = transcribe(audio, diar, max_segment_sec=3, decoder=Decoder())
+    assert results[0].text == "xin chào xin chào"

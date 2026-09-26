@@ -9,11 +9,16 @@ import numpy as np
 
 from meeting_asr.data_gen.simulate import load_clips, read_mono_wav, simulate_matrix, write_session
 from meeting_asr.io import _atomic_text
+from meeting_asr.runtime import file_sha256
 
 
-def build_dataset(manifest, out, *, conversations=2, clips_per_speaker=6, seed=42, noise=None):
+def build_dataset(
+    manifest, out, *, conversations=2, clips_per_speaker=6, seed=42, noise=None, session_limit=None
+):
     if conversations < 1 or clips_per_speaker < 1:
         raise ValueError("conversation and clip counts must be positive")
+    if session_limit is not None and not 1 <= session_limit <= conversations * 9:
+        raise ValueError("session_limit must be within the requested matrix size")
     source = Path(manifest).resolve()
     metadata = json.loads(source.read_text())
     if metadata.get("split") not in {"dev", "test"}:
@@ -26,7 +31,7 @@ def build_dataset(manifest, out, *, conversations=2, clips_per_speaker=6, seed=4
         rng.shuffle(group)
     destination = Path(out).resolve()
     noise_wave = read_mono_wav(noise)[0] if noise else None
-    sessions = []
+    conversations_clips = []
     for index in range(1, conversations + 1):
         candidates = [s for s, clips in groups.items() if len(clips) >= clips_per_speaker]
         if len(candidates) < 3:
@@ -36,6 +41,9 @@ def build_dataset(manifest, out, *, conversations=2, clips_per_speaker=6, seed=4
         rng.shuffle(candidates)
         candidates.sort(key=lambda s: len(groups[s]), reverse=True)
         clips = [groups[s].pop() for s in candidates[:3] for _ in range(clips_per_speaker)]
+        conversations_clips.append(clips)
+    sessions = []
+    for index, clips in enumerate(conversations_clips, 1):
         for session in simulate_matrix(
             clips,
             seed=seed + index,
@@ -43,6 +51,8 @@ def build_dataset(manifest, out, *, conversations=2, clips_per_speaker=6, seed=4
             noise=noise_wave,
             noise_source=str(Path(noise).resolve()) if noise else "white",
         ):
+            if session_limit is not None and len(sessions) >= session_limit:
+                break
             wav = write_session(destination, session)
             sessions.append(
                 {
@@ -59,6 +69,7 @@ def build_dataset(manifest, out, *, conversations=2, clips_per_speaker=6, seed=4
         "seed": seed,
         "split": metadata["split"],
         "source_manifest": str(source),
+        "source_sha256": file_sha256(source),
         "sessions": sessions,
     }
     _atomic_text(destination / "sessions.json", json.dumps(payload, ensure_ascii=False, indent=2))

@@ -72,7 +72,7 @@ def export_pdf(view: dict) -> bytes:
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
     font_path = Path(
-        os.getenv("MEETING_PDF_FONT", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+        os.getenv("MEETING_PDF_FONT") or "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     )
     if not font_path.is_file():
         raise ValueError("Set MEETING_PDF_FONT to a Unicode TTF font supporting Vietnamese")

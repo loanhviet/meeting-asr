@@ -59,6 +59,8 @@ class DiarSignals:
             raise ValueError("overlap_ratio must be in [0, 1]")
         if self.n_windows is not None and self.n_windows < 0:
             raise ValueError("n_windows must be nonnegative")
+        if self.cluster_margin is not None and not isfinite(self.cluster_margin):
+            raise ValueError("cluster_margin must be finite or null")
 
 
 @dataclass(slots=True)
@@ -68,6 +70,16 @@ class ASRSignals:
     compression_ratio: float | None = None
     min_token_logprob: float | None = None
     was_split: bool = False
+
+    def __post_init__(self):
+        for name in ("avg_logprob", "min_token_logprob", "compression_ratio", "no_speech_prob"):
+            value = getattr(self, name)
+            if value is not None and not isfinite(value):
+                raise ValueError(f"{name} must be finite or null")
+        if self.no_speech_prob is not None and not 0 <= self.no_speech_prob <= 1:
+            raise ValueError("no_speech_prob must be in [0, 1]")
+        if self.compression_ratio is not None and self.compression_ratio < 0:
+            raise ValueError("compression_ratio must be nonnegative")
 
 
 @dataclass(slots=True)

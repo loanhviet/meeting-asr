@@ -127,7 +127,11 @@ class JobStore:
             turn["reviewed"] = bool(edit.get("reviewed", False))
         if job["summary_json"]:
             edited.update(json.loads(job["summary_json"]))
-        stale = job["summary_revision"] is not None and job["summary_revision"] != job["revision"]
+        stale = bool(
+            (original.get("summary") or job["summary_json"])
+            and job["summary_revision"] is not None
+            and job["summary_revision"] != job["revision"]
+        )
         # Never present an old summary as current in exported artifacts.
         return {
             "original": original,

@@ -1,4 +1,5 @@
 import json
+import threading
 
 import pytest
 
@@ -45,3 +46,23 @@ def test_worker_records_failure_and_retries_from_same_source(tmp_path):
     assert store.get(job_id)["status"] == "failed"
     store.retry(job_id)
     assert store.get(job_id)["status"] == "queued"
+
+
+def test_worker_recovers_interrupted_job_on_restart(tmp_path):
+    store = JobStore(tmp_path)
+    job_id = new_job_id()
+    store.create(job_id, "x.wav", tmp_path / "x.wav")
+    store.update(job_id, status="running", stage="M3")
+    processed = threading.Event()
+
+    def processor(source, config, out, progress):
+        write_minutes_json(out / "minutes.json", MeetingMinutes("x", 6, 0, []))
+        processed.set()
+
+    worker = JobWorker(store, load_config(), processor)
+    worker.start()
+    try:
+        assert processed.wait(3)
+    finally:
+        worker.stop()
+    assert store.get(job_id)["status"] == "complete"

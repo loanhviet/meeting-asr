@@ -119,7 +119,7 @@ def _run_pipeline(args: argparse.Namespace) -> int:
         config["diarization"]["backend"] = args.backend
     if args.device:
         config.setdefault("runtime", {})["device"] = args.device
-    if args.batch_size:
+    if args.batch_size is not None:
         config["asr"]["batch_size"] = args.batch_size
     minutes = run_pipeline(
         args.audio, config, args.out, no_cache=args.no_cache, oracle_rttm=args.oracle_rttm
@@ -145,6 +145,7 @@ def _run_dataset(args):
         clips_per_speaker=args.clips_per_speaker,
         seed=args.seed,
         noise=args.noise,
+        session_limit=args.session_limit,
     )
     print(json.dumps({"sessions": len(payload["sessions"]), "out": args.out}))
     return 0
@@ -164,7 +165,44 @@ def _run_rq3(args):
 
 
 def _run_calibrate(args):
-    print(json.dumps(calibrate_margin(args.manifest, args.out, args.percentile), indent=2))
+    print(
+        json.dumps(
+            calibrate_margin(
+                args.manifest, args.out, args.percentile, args.fit_weights, args.trials, args.seed
+            ),
+            indent=2,
+        )
+    )
+    return 0
+
+
+def _run_doctor(args):
+    from meeting_asr.doctor import environment_report
+    from meeting_asr.settings import load_environment
+
+    load_environment()
+    print(json.dumps(environment_report(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def _run_serve(args):
+    try:
+        import uvicorn
+
+        from meeting_asr.api import create_app
+    except ImportError as exc:
+        raise RuntimeError("Install API dependencies: uv sync --extra api") from exc
+    uvicorn.run(create_app(load_config(args.config)), host=args.host, port=args.port)
+    return 0
+
+
+def _run_benchmark(args):
+    from meeting_asr.benchmark import benchmark
+
+    result = benchmark(
+        args.audio, load_config(args.config), args.out, args.repetitions, args.cached
+    )
+    print(json.dumps(result, indent=2))
     return 0
 
 
@@ -220,6 +258,9 @@ def main(argv: list[str] | None = None) -> int:
     dataset_parser.add_argument("--clips-per-speaker", type=int, default=6)
     dataset_parser.add_argument("--seed", type=int, default=42)
     dataset_parser.add_argument("--noise")
+    dataset_parser.add_argument(
+        "--session-limit", type=int, help="e.g. 30 independent dev sessions"
+    )
     dataset_parser.set_defaults(handler=_run_dataset)
 
     experiments_parser = subcommands.add_parser("experiments", help="run RQ1/RQ2 with paired data")
@@ -243,12 +284,34 @@ def main(argv: list[str] | None = None) -> int:
     calibration_parser.add_argument("manifest")
     calibration_parser.add_argument("--out", required=True)
     calibration_parser.add_argument("--percentile", type=float, default=90)
+    calibration_parser.add_argument("--fit-weights", action="store_true")
+    calibration_parser.add_argument("--trials", type=int, default=64)
+    calibration_parser.add_argument("--seed", type=int, default=42)
     calibration_parser.set_defaults(handler=_run_calibrate)
+
+    doctor_parser = subcommands.add_parser(
+        "doctor", help="inspect environment without exposing keys"
+    )
+    doctor_parser.set_defaults(handler=_run_doctor)
+
+    serve_parser = subcommands.add_parser("serve", help="start the local API and single worker")
+    serve_parser.add_argument("--host", default="127.0.0.1")
+    serve_parser.add_argument("--port", type=int, default=8000)
+    serve_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    serve_parser.set_defaults(handler=_run_serve)
+
+    benchmark_parser = subcommands.add_parser("benchmark", help="measure uncached RTF and VRAM")
+    benchmark_parser.add_argument("audio")
+    benchmark_parser.add_argument("--out", required=True)
+    benchmark_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    benchmark_parser.add_argument("--repetitions", type=int, default=1)
+    benchmark_parser.add_argument("--cached", action="store_true")
+    benchmark_parser.set_defaults(handler=_run_benchmark)
 
     args = parser.parse_args(argv)
     try:
         return args.handler(args)
-    except (OSError, TypeError, ValueError, RuntimeError, NotImplementedError) as exc:
+    except (OSError, TypeError, ValueError, RuntimeError, KeyError, ImportError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

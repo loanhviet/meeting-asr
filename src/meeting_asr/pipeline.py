@@ -54,6 +54,9 @@ def run_pipeline(
     oracle_rttm: str | Path | None = None,
     progress: Progress | None = None,
 ) -> MeetingMinutes:
+    missing = {"diarization", "asr", "postprocess", "confidence"} - set(config)
+    if missing:
+        raise ValueError(f"pipeline config is missing sections: {sorted(missing)}")
     source, destination = Path(source).resolve(), Path(out)
     destination.mkdir(parents=True, exist_ok=True)
     cache = project_path(config["paths"]["cache_dir"])
@@ -83,7 +86,7 @@ def run_pipeline(
             "config": config["diarization"],
             **common,
             "oracle": file_sha256(oracle_rttm) if oracle_rttm else None,
-            "implementation": 1,
+            "implementation": 2,
         }
     )
     diar_path = cache / "diarization" / f"{key2}.json"

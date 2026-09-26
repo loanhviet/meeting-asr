@@ -15,6 +15,7 @@ class DiarizationResult:
     segments: list[Segment]
     signals: list[DiarSignals]
     backend: str
+    overlap_regions: list[tuple[float, float]] | None = None
 
     def __post_init__(self):
         if len(self.segments) != len(self.signals):
@@ -29,6 +30,9 @@ class DiarizationResult:
             [Segment(**s) for s in payload["segments"]],
             [DiarSignals(**s) for s in payload["signals"]],
             payload["backend"],
+            [tuple(region) for region in payload["overlap_regions"]]
+            if payload.get("overlap_regions") is not None
+            else None,
         )
 
 

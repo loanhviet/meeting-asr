@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from scipy.integrate import trapezoid
 
-from meeting_asr.confidence import VARIANTS, score_confidence, select_review
+from meeting_asr.confidence import DEFAULT_WEIGHTS, VARIANTS, score_confidence, select_review
 from meeting_asr.evaluation.metrics import _annotation, _word_errors, normalize_for_wer
 from meeting_asr.io import _atomic_text, minutes_from_dict, read_transcript_json
 from meeting_asr.models import Turn
@@ -99,9 +101,7 @@ def variant_metrics(turns: list[Turn], labels: list[TurnError], coverage=0.2):
     # Area uses the declared budget axis because whole-turn selection can underfill it.
     auc = (
         float(
-            np.trapezoid(
-                [p["remaining_wer"] for p in curve], [p["requested_coverage"] for p in curve]
-            )
+            trapezoid([p["remaining_wer"] for p in curve], [p["requested_coverage"] for p in curve])
         )
         if denominator
         else None
@@ -119,6 +119,9 @@ def variant_metrics(turns: list[Turn], labels: list[TurnError], coverage=0.2):
         "curve": curve,
         "reference_words": denominator,
         "labelled_turns": len(by_id),
+        "true_positives": tp,
+        "false_positives": len(selected - positives),
+        "false_negatives": len(positives - selected),
     }
 
 
@@ -135,7 +138,9 @@ def evaluate_confidence(minutes, reference, options, seed=42, thresholds=(0.2, 0
     return result
 
 
-def calibrate_margin(manifest, out, percentile=90):
+def calibrate_margin(manifest, out, percentile=90, fit_weights=False, trials=64, seed=42):
+    if not 0 <= percentile <= 100 or trials < 1:
+        raise ValueError("invalid percentile or calibration trials")
     payload = json.loads(Path(manifest).read_text())
     if payload.get("split") != "dev" or not payload.get("sessions"):
         raise ValueError("calibration requires an explicitly labelled dev manifest")
@@ -161,6 +166,38 @@ def calibrate_margin(manifest, out, percentile=90):
         "source_manifest": str(Path(manifest).resolve()),
         "observations": len(positive),
     }
+    if fit_weights:
+        examples = []
+        for session in payload["sessions"]:
+            minutes = minutes_from_dict(json.loads((base / session["minutes"]).read_text()))
+            reference = read_transcript_json(base / session["reference_json"])
+            labels, _ = label_turns(minutes.turns, reference)
+            examples.append((minutes.turns, {label.turn_id for label in labels if label.is_bad}))
+        keys = list(DEFAULT_WEIGHTS)
+        rng = np.random.default_rng(seed)
+        candidates = [DEFAULT_WEIGHTS] + [
+            dict(zip(keys, row.tolist(), strict=True))
+            for row in rng.dirichlet(np.ones(len(keys)), size=trials)
+        ]
+        best, best_f1 = DEFAULT_WEIGHTS, -1.0
+        for weights in candidates:
+            f1s = []
+            for turns, positives in examples:
+                scored = score_confidence(turns, weights=weights, margin_ref=result["margin_ref"])
+                chosen = {t.turn_id for t in scored if t.flagged}
+                tp = len(chosen & positives)
+                f1s.append(2 * tp / (len(chosen) + len(positives)) if chosen or positives else 0)
+            mean_f1 = float(np.mean(f1s))
+            if mean_f1 > best_f1:
+                best, best_f1 = weights, mean_f1
+        result.update(
+            weights=best,
+            dev_mean_f1=best_f1,
+            seed=seed,
+            trials=trials,
+            error_threshold=0.3,
+            target_coverage=0.2,
+        )
     _atomic_text(out, json.dumps(result, indent=2))
     return result
 
@@ -185,6 +222,26 @@ def run_confidence_evaluation(manifest, config, out):
     destination = Path(out)
     destination.mkdir(parents=True, exist_ok=True)
     _atomic_text(destination / "rq3.json", json.dumps(results, ensure_ascii=False, indent=2))
+    rows = []
+    for result in results:
+        session = result["session"]
+        for threshold, score in result["scores"].items():
+            for variant, metrics in score["variants"].items():
+                rows.append(
+                    {
+                        "conversation_id": session.get("conversation_id"),
+                        "condition": session.get("condition"),
+                        "backend": session.get("backend"),
+                        "threshold": threshold,
+                        "variant": variant,
+                        "missed_speech_ratio": score["missed_speech_ratio"],
+                        **{k: v for k, v in metrics.items() if k != "curve"},
+                    }
+                )
+    with (destination / "rq3.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
     import matplotlib
 
     matplotlib.use("Agg")

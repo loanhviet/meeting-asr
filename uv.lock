@@ -839,11 +839,15 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "jiwer" },
+    { name = "matplotlib" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pyannote-metrics" },
     { name = "pyloudnorm" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 
 [package.optional-dependencies]
@@ -851,7 +855,6 @@ api = [
     { name = "fastapi" },
     { name = "filelock" },
     { name = "httpx" },
-    { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "reportlab" },
     { name = "uvicorn" },
@@ -863,8 +866,6 @@ dev = [
 inference = [
     { name = "huggingface-hub" },
     { name = "pyannote-audio" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "silero-vad" },
     { name = "speechbrain" },
     { name = "torch" },
@@ -879,17 +880,18 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'api'", specifier = ">=0.27,<1" },
     { name = "huggingface-hub", marker = "extra == 'inference'", specifier = ">=0.28,<1" },
     { name = "jiwer", specifier = ">=4,<5" },
+    { name = "matplotlib", specifier = ">=3.8,<4" },
     { name = "numpy", specifier = ">=1.26,<3" },
     { name = "pyannote-audio", marker = "extra == 'inference'", specifier = "==3.4.0" },
     { name = "pyannote-metrics", specifier = ">=3.2,<4" },
     { name = "pyloudnorm", specifier = ">=0.1.1,<1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8,<10" },
-    { name = "python-dotenv", marker = "extra == 'api'", specifier = ">=1,<2" },
+    { name = "python-dotenv", specifier = ">=1,<2" },
     { name = "python-multipart", marker = "extra == 'api'", specifier = ">=0.0.18,<1" },
     { name = "pyyaml", specifier = ">=6.0,<7" },
     { name = "reportlab", marker = "extra == 'api'", specifier = ">=4.2,<5" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9,<1" },
-    { name = "scipy", marker = "extra == 'inference'", specifier = ">=1.13,<2" },
+    { name = "scipy", specifier = ">=1.13,<2" },
     { name = "silero-vad", marker = "extra == 'inference'", specifier = ">=6,<7" },
     { name = "speechbrain", marker = "extra == 'inference'", specifier = ">=1.0,<2" },
     { name = "torch", marker = "extra == 'inference'", specifier = ">=2.5,<2.9" },

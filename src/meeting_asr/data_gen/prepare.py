@@ -10,6 +10,7 @@ import numpy as np
 from meeting_asr.data_gen.simulate import read_mono_wav
 from meeting_asr.io import _atomic_text
 from meeting_asr.runtime import file_sha256
+from meeting_asr.settings import config_hash
 
 
 def prepare_dataset(
@@ -36,6 +37,8 @@ def prepare_dataset(
             if not isinstance(entry.get(field), str) or not entry[field].strip():
                 raise ValueError(f"every clip requires {field}")
         identity = (entry["source"], entry["clip_id"])
+        if "vivos" in entry["source"].casefold() and "train" in entry["source"].casefold():
+            raise ValueError("VIVOS train is excluded from PhoWhisper evaluation")
         if identity in ids:
             raise ValueError(f"duplicate clip ID: {identity}")
         ids.add(identity)
@@ -68,7 +71,10 @@ def prepare_dataset(
     for name in ("dev", "test"):
         clips = [e for e in accepted if ((e["source"], e["speaker"]) in dev) == (name == "dev")]
         # Qualify original speaker identity so two corpora's speaker_001 cannot collide.
-        clips = [{**e, "speaker": f"{e['source']}:{e['speaker']}"} for e in clips]
+        clips = [
+            {**e, "speaker": f"src_{config_hash({'source': e['source']})[:8]}:{e['speaker']}"}
+            for e in clips
+        ]
         payload = {"seed": seed, "split": name, "clips": clips}
         _atomic_text(
             destination / f"{name}.json", json.dumps(payload, ensure_ascii=False, indent=2)

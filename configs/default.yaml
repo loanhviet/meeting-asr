@@ -41,6 +41,7 @@ confidence:
   target_coverage: 0.20
   margin_ref_percentile: 90
   margin_ref: null  # Set from independent dev calibration; absent signal is omitted.
+  calibration_file: null
   weights:
     asr: 0.30
     speech: 0.10

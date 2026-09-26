@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -42,3 +43,10 @@ def test_preprocess_cache_ignores_later_stage_weights(tmp_path: Path) -> None:
     assert stage_key(source, config, "preprocess", "1") == original_key
     config["preprocess"]["normalize"] = False
     assert stage_key(source, config, "preprocess", "1") != original_key
+
+
+def test_broken_cache_metadata_is_a_miss(tmp_path):
+    audio = AudioBundle(np.array([0.1], dtype=np.float32), 16000, 16000, "fixture")
+    save_audio_bundle(tmp_path, "fixture", audio)
+    (tmp_path / "fixture.json").write_text(json.dumps({"schema_version": 1, "key": "fixture"}))
+    assert load_audio_bundle(tmp_path, "fixture") is None

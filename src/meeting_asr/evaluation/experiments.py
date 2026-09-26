@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
+from meeting_asr.evaluation.detection import overlap_detection_score, overlap_regions
 from meeting_asr.evaluation.metrics import (
     cp_word_error_rate,
     diarization_error_rate,
@@ -114,6 +115,13 @@ def run_experiments(manifest, config, out, backends=("pyannote", "ecapa")):
                 "oracle_cpwer": oracle_score["cpwer"],
                 "config_hash": config_hash(options),
             }
+            signals = json.loads((predicted_dir / "diarsignals.json").read_text())
+            regions = signals.get("overlap_regions")
+            row.update(
+                overlap_detection_score(
+                    truth, regions if regions is not None else overlap_regions(predicted)
+                )
+            )
             for label, collar, skip in (("relaxed", 0.25, True), ("strict", 0.0, False)):
                 try:
                     score = diarization_error_rate(
@@ -140,4 +148,21 @@ def run_experiments(manifest, config, out, backends=("pyannote", "ecapa")):
         for backend in backends
     }
     _atomic_text(destination / "paired_summary.json", json.dumps(summary, indent=2))
+    for split in {row["split"] for row in rows}:
+        sessions = [
+            {**row, "minutes": str(Path(row["prediction_dir"]) / "minutes.json")}
+            for row in rows
+            if row["split"] == split
+        ]
+        _atomic_text(
+            destination / f"confidence_{split}.json",
+            json.dumps(
+                {
+                    "split": split,
+                    "sessions": sessions,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+        )
     return rows

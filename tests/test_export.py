@@ -44,5 +44,6 @@ def test_exports_use_reviewed_text_and_disclose_stale_summary():
     not Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf").is_file(),
     reason="Unicode PDF font unavailable",
 )
-def test_pdf_embeds_unicode_font_and_escapes_markup():
+def test_pdf_embeds_unicode_font_and_escapes_markup(monkeypatch):
+    monkeypatch.setenv("MEETING_PDF_FONT", "")
     assert export_pdf(view()).startswith(b"%PDF-")

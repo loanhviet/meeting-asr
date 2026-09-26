@@ -64,13 +64,20 @@ def load_audio_bundle(directory: str | Path, key: str) -> AudioBundle | None:
         waveform = np.load(array_path, allow_pickle=False)
     except (OSError, ValueError, json.JSONDecodeError):
         return None
-    if metadata.get("schema_version") != SCHEMA_VERSION or metadata.get("key") != key:
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("schema_version") != SCHEMA_VERSION
+        or metadata.get("key") != key
+    ):
         return None
-    return AudioBundle(
-        waveform=waveform,
-        sr=metadata["sr"],
-        original_sr=metadata["original_sr"],
-        source_path=metadata["source_path"],
-        normalization_method=metadata["normalization_method"],
-        warnings=metadata["warnings"],
-    )
+    try:
+        return AudioBundle(
+            waveform=waveform,
+            sr=metadata["sr"],
+            original_sr=metadata["original_sr"],
+            source_path=metadata["source_path"],
+            normalization_method=metadata["normalization_method"],
+            warnings=metadata["warnings"],
+        )
+    except (KeyError, ValueError, TypeError):
+        return None

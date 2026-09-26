@@ -173,7 +173,8 @@ def transcribe(
                 lo, hi = max(a, int(segment.start * audio.sr)), min(b, int(segment.end * audio.sr))
                 waveform[: lo - a] = 0
                 waveform[hi - a :] = 0
-            tasks.append((index, chunk_index, start, end, waveform))
+            overlap = chunk_index > 0 and start < ranges[chunk_index - 1][1] - 1e-6
+            tasks.append((index, chunk_index, start, end, waveform, overlap))
     if not tasks:
         return []
     owned = decoder is None
@@ -197,7 +198,7 @@ def transcribe(
             if len(output) != len(batch):
                 raise RuntimeError("decoder returned wrong batch length")
             for task, result in zip(batch, output, strict=True):
-                decoded[(task[0], task[1])] = (result, task[3] - task[2])
+                decoded[(task[0], task[1])] = (result, task[3] - task[2], task[5])
             cursor += len(batch)
     finally:
         if owned:
@@ -206,13 +207,17 @@ def transcribe(
     for index, (segment, signals) in enumerate(valid):
         parts = [decoded[key] for key in sorted(decoded) if key[0] == index]
         text = ""
-        for part, _ in parts:
-            text = join_overlap(text, part.text)
+        for part, _, overlap in parts:
+            text = (
+                join_overlap(text, part.text)
+                if overlap
+                else " ".join((text + " " + part.text).split())
+            )
 
         def average(field, parts=parts):
             available = [
                 (getattr(p, field), duration)
-                for p, duration in parts
+                for p, duration, _ in parts
                 if getattr(p, field) is not None
             ]
             return (
@@ -221,7 +226,7 @@ def transcribe(
                 else None
             )
 
-        minima = [p.min_token_logprob for p, _ in parts if p.min_token_logprob is not None]
+        minima = [p.min_token_logprob for p, _, _ in parts if p.min_token_logprob is not None]
         raw = text.encode("utf-8")
         utterances.append(
             Utterance(

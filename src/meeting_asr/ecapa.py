@@ -11,6 +11,7 @@ import numpy as np
 from meeting_asr.diarization import DiarizationResult, release_gpu, resolve_device
 from meeting_asr.evaluation.overlap import utterance_overlap_fractions
 from meeting_asr.models import DiarSignals, Segment
+from meeting_asr.settings import PROJECT_ROOT
 
 
 @dataclass
@@ -22,6 +23,9 @@ class Window:
 
 def cluster_embeddings(embeddings, threshold=0.7, min_speakers=None, max_speakers=6):
     from scipy.cluster.hierarchy import cut_tree, fcluster, linkage
+
+    if min_speakers is not None and max_speakers is not None and min_speakers > max_speakers:
+        raise ValueError("min_speakers cannot exceed max_speakers")
 
     matrix = np.asarray(embeddings, dtype=np.float64)
     if matrix.ndim != 2 or not np.isfinite(matrix).all():
@@ -49,7 +53,7 @@ def cluster_embeddings(embeddings, threshold=0.7, min_speakers=None, max_speaker
     return labels, margins
 
 
-def assign_overlaps(segments, windows, labels, margins, regions):
+def assign_overlaps(segments, windows, labels, margins, regions, max_anchor_distance=10.0):
     """Add the closest different speaker supported outside each overlap region.
 
     Only predictions are used. Regions without single-speaker evidence cannot be
@@ -76,6 +80,7 @@ def assign_overlaps(segments, windows, labels, margins, regions):
                 (w, label, margin)
                 for w, label, margin in anchors
                 if f"SPEAKER_{label:02d}" not in active
+                and abs((w.start + w.end) / 2 - (a + b) / 2) <= max_anchor_distance
             ]
             if not candidates:
                 continue
@@ -120,8 +125,16 @@ class EcapaBackend:
         waveform = torch.from_numpy(audio.waveform)
         vad = load_silero_vad()
         speech = get_speech_timestamps(
-            waveform, vad, sampling_rate=audio.sr, threshold=self.vad_threshold, return_seconds=True
+            waveform,
+            vad,
+            sampling_rate=audio.sr,
+            threshold=self.vad_threshold,
+            return_seconds=False,
         )
+        speech = [
+            {"start": span["start"] / audio.sr, "end": min(audio.duration, span["end"] / audio.sr)}
+            for span in speech
+        ]
         del vad
         windows = []
         for region, span in enumerate(speech):
@@ -137,7 +150,9 @@ class EcapaBackend:
         if not windows:
             return DiarizationResult([], [], "ecapa+overlap")
         encoder = EncoderClassifier.from_hparams(
-            source="speechbrain/spkrec-ecapa-voxceleb", run_opts={"device": device}
+            source="speechbrain/spkrec-ecapa-voxceleb",
+            run_opts={"device": device},
+            savedir=str(PROJECT_ROOT / ".cache" / "models" / "ecapa"),
         )
         vectors = []
         try:
@@ -201,4 +216,4 @@ class EcapaBackend:
             signals.append(
                 DiarSignals(ratio, float(np.mean(valid)) if valid else None, len(values))
             )
-        return DiarizationResult(segments, signals, "ecapa+overlap")
+        return DiarizationResult(segments, signals, "ecapa+overlap", regions)
