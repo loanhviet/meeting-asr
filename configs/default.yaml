@@ -53,6 +53,10 @@ llm:
   enabled: false
   provider: null
   model: null
+  base_url: null
+  api_key_env: MEETING_LLM_API_KEY
+  timeout_sec: 90
+  max_input_chars: 12000
 
 evaluation:
   der_collar: [0.25, 0.0]

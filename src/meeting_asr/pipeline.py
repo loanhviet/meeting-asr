@@ -139,6 +139,29 @@ def run_pipeline(
     notify("M5", 0.85)
     minutes.turns = score_confidence(turns, seed=int(config["seed"]), **config["confidence"])
     minutes.flagged_ratio = review_coverage(minutes.turns)
+    summary_error = None
+    if config.get("llm", {}).get("enabled"):
+        from meeting_asr.summarize import Summarizer
+
+        notify("M6", 0.92)
+        try:
+            summary = Summarizer(config["llm"], cache / "summaries").summarize(minutes.turns)
+            minutes.summary, minutes.topics, minutes.action_items = (
+                summary["summary"],
+                summary["topics"],
+                summary["action_items"],
+            )
+        except (ValueError, RuntimeError, KeyError, TypeError) as exc:
+            summary_error = str(exc)
+    _atomic_text(
+        destination / "summary_status.json",
+        json.dumps(
+            {
+                "enabled": bool(config.get("llm", {}).get("enabled")),
+                "error": summary_error,
+            }
+        ),
+    )
     write_minutes_json(destination / "minutes.json", minutes)
     elapsed = time.perf_counter() - started
     write_run_manifest(
@@ -152,6 +175,7 @@ def run_pipeline(
             "versions": versions,
             "warnings": audio.warnings,
             "review_coverage": minutes.flagged_ratio,
+            "summary_error": summary_error,
             "oracle_rttm": str(oracle_rttm) if oracle_rttm else None,
         },
     )
