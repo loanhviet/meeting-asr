@@ -6,6 +6,7 @@ import os
 from dataclasses import asdict, dataclass
 from typing import Protocol
 
+from meeting_asr.checkpoints import pyannote_checkpoint_context
 from meeting_asr.evaluation.overlap import utterance_overlap_fractions
 from meeting_asr.models import AudioBundle, DiarSignals, Segment
 
@@ -80,7 +81,10 @@ class PyannoteBackend:
             from pyannote.audio import Pipeline
         except ImportError as exc:
             raise RuntimeError("Install inference dependencies: uv sync --extra inference") from exc
-        pipeline = Pipeline.from_pretrained(self.model_name, use_auth_token=os.getenv("HF_TOKEN"))
+        with pyannote_checkpoint_context():
+            pipeline = Pipeline.from_pretrained(
+                self.model_name, use_auth_token=os.getenv("HF_TOKEN")
+            )
         if pipeline is None:
             raise RuntimeError(
                 "Cannot load pyannote. Accept diarization and segmentation model conditions "

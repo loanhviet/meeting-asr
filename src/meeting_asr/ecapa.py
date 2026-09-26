@@ -8,6 +8,7 @@ from itertools import pairwise
 
 import numpy as np
 
+from meeting_asr.checkpoints import pyannote_checkpoint_context
 from meeting_asr.diarization import DiarizationResult, release_gpu, resolve_device
 from meeting_asr.evaluation.overlap import utterance_overlap_fractions
 from meeting_asr.models import DiarSignals, Segment
@@ -186,7 +187,10 @@ class EcapaBackend:
                 values.append(margins[index])
             else:
                 pieces.append((segment, [margins[index]]))
-        model = Model.from_pretrained(self.overlap_detector, use_auth_token=os.getenv("HF_TOKEN"))
+        with pyannote_checkpoint_context():
+            model = Model.from_pretrained(
+                self.overlap_detector, use_auth_token=os.getenv("HF_TOKEN")
+            )
         if model is None:
             raise RuntimeError("Accept segmentation model conditions and configure HF_TOKEN")
         detector = OverlappedSpeechDetection(segmentation=model)
