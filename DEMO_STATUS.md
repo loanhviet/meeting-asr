@@ -31,7 +31,7 @@ RTX 3050 Laptop GPU, Torch 2.8, PhoWhisper-medium, ASR batch size 1:
 bản rõ 91,6 giây xử lý không cache khoảng 30,6 giây (RTF 0,334), peak CUDA
 allocated 1,73 GiB. Đây không phải tổng VRAM hệ thống hay benchmark T4.
 
-Pyannote nhận hai speaker ở cả ba demo. ECAPA mặc định nhận 3/4/4 speaker
+Các đường RQ3 và bảng DER/WER trong `results/demo-confidence` và `results/demo-experiments` sinh trước khi đổi cách chấm turn. Không trích các số đó. Pyannote nhận hai speaker ở cả ba demo. ECAPA mặc định nhận 3/4/4 speaker
 tương ứng rõ/nhiễu/chồng lấn; cần hiệu chỉnh clustering trên **dev người thật**,
 không ép số speaker hay dùng demo này để chọn tham số nghiên cứu.
 

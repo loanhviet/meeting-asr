@@ -1,6 +1,6 @@
 # Meeting Minutes ASR
 
-Hệ thống biên bản họp tiếng Việt: phân người nói, phiên âm, đánh dấu lượt nói cần soát, tóm tắt và trích việc cần làm. Có pipeline CLI, backend pyannote và ECAPA + overlap detector, PhoWhisper, confidence, bộ chạy RQ1–RQ3, FastAPI/SQLite và website Next.js để xem/sửa/export. **Code đã có; chất lượng model và kết quả nghiên cứu cần nghiệm thu trên dữ liệu thật.**
+Hệ thống biên bản họp tiếng Việt: phân người nói, phiên âm, đánh dấu lượt nói cần soát, tóm tắt và trích việc cần làm. Có pipeline CLI, backend pyannote và ECAPA + overlap detector, PhoWhisper, confidence, bộ chạy RQ1–RQ3, FastAPI/SQLite và website Next.js để xem/sửa/export. **Code đã có; chất lượng model và kết quả nghiên cứu cần nghiệm thu trên dữ liệu thật.** Tỷ lệ từ còn sai của RQ3 không phải WER cả file. `asr.collect_no_speech` mặc định tắt.
 
 Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm và checklist nghiệm thu: [TESTING.md](TESTING.md).
 

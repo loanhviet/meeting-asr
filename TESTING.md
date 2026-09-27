@@ -7,7 +7,7 @@ uv sync --locked --extra dev --extra inference --extra api
 uv run --no-sync meeting-asr doctor
 ```
 
-Tạo `.env` từ nội dung `.env.example`, điền token trên máy. `.env` được đọc tự động; biến môi trường đã có sẽ được ưu tiên. Không đưa khóa vào YAML, Git hoặc browser. Với RTX 3050 4 GB, bắt đầu bằng `MEETING_ASR_BATCH_SIZE=1`. Model chạy từng stage và được giải phóng trước stage tiếp; vẫn cần đo VRAM trên audio thật. CPU dùng `MEETING_DEVICE=cpu`.
+Tạo `.env` từ nội dung `.env.example`, điền token trên máy. `.env` được đọc tự động; biến môi trường đã có sẽ được ưu tiên. Không đưa khóa vào YAML, Git hoặc browser. Với RTX 3050 4 GB, bắt đầu bằng `MEETING_ASR_BATCH_SIZE=1`. Model chạy từng stage và được giải phóng trước stage tiếp; vẫn cần đo VRAM trên audio thật. CPU dùng `MEETING_DEVICE=cpu`. `asr.collect_no_speech` mặc định tắt để khỏi chạy thêm một lượt encoder. Chỉ bật trên một file pilot; nếu còn VRAM và tín hiệu đổi được lượt gắn cờ thì mới bật cho cả bộ.
 
 Để dùng backend theo spec, đăng nhập và chấp nhận điều kiện của [speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) và [segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0). Token cần quyền đọc các model này. Download lần đầu cần mạng; không tự thay model khi quyền truy cập thất bại.
 
@@ -85,7 +85,7 @@ npm run dev
 
 Mở `http://127.0.0.1:3000`. API mặc định `http://127.0.0.1:8000`; địa chỉ khác cấu hình bằng `web/.env.local` theo `web/.env.example`. Chạy đúng một process API/worker; lock từ chối worker thứ hai dùng cùng job store. Job và chỉnh sửa nằm trong `results/jobs/`. Khi process bị dừng, job đang chạy được xếp lại hàng đợi khi khởi động; stage đã cache được dùng lại.
 
-Nghiệm thu bằng **ba bản ghi tiếng Việt khác nhau**, có ít nhất một bản nhiều người nói và một đoạn nói chồng lấn:
+Nghiệm thu website bằng **ba bản ghi họp tiếng Việt công khai**, có ít nhất một bản nhiều người nói và một đoạn nói chồng lấn. Nghe các đoạn bị gắn cờ. Không cần gán nhãn tay đủ RTTM cho cả ba bản:
 
 1. Upload WAV/MP3/M4A, theo dõi trạng thái, đối chiếu nội dung với audio.
 2. Click timestamp, nghe lại đoạn flagged và sửa text; bản gốc và lý do flag phải còn nguyên.
@@ -131,13 +131,13 @@ uv run --no-sync meeting-asr calibrate-confidence results/dev/confidence_dev.jso
 uv run --no-sync meeting-asr evaluate-confidence results/test/confidence_test.json --out results/rq3
 ```
 
-`experiments` xuất CSV RQ1/RQ2, dữ liệu từng file, precision/recall detector overlap, manifest dự đoán cho RQ3 và bootstrap theo hội thoại gốc. RQ2 bắt buộc `masking=none`; giữ cả gap âm, relative gap bằng `null` khi mẫu số 0. DER relaxed không có speech sau khi bỏ overlap được ghi không xác định.
+`experiments` xuất CSV RQ1/RQ2, dữ liệu từng file, precision/recall detector overlap, manifest dự đoán cho RQ3 và bootstrap theo hội thoại gốc. RQ2 bắt buộc `masking=none`; pipeline cũng từ chối mọi masking khác cho đến khi biến thể Input Masking được làm đúng. Giữ cả gap âm, relative gap bằng `null` khi mẫu số 0. DER relaxed không có speech sau khi bỏ overlap được ghi không xác định. Mỗi dòng cascaded và mỗi lần benchmark được nối thêm vào `results/experiments.csv`; miss, false alarm và confusion trong file đó là thành phần DER nới.
 
 `calibrate-confidence` tính margin percentile trên dev; `--fit-weights` tìm trọng số theo mean F1 trên dev, threshold 0.30 và ngân sách 20%. File hiệu chỉnh được kiểm tra nhãn dev và hash khi nạp. Ngưỡng clustering ECAPA vẫn cần khảo sát trên dev bằng các YAML riêng; không chỉnh trên test.
 
-RQ3 xuất JSON/CSV và PNG cho bốn biến thể, thresholds 0.20/0.30/0.50. Đường dùng **ngân sách thời lượng lượt nói** trên trục X và ghi thêm coverage thực tế. Turn nguyên vẹn có thể khiến ngân sách chưa dùng hết; coverage random/full có thể khác nhau dù cùng ngân sách. “Remaining WER” là phép đo **ở mức turn** với toàn bộ reference giao thời gian, không phải cpWER toàn cuộc họp sau một người thật sửa. Missed speech không có turn để soát được báo riêng. Cần phân tích thêm sai speaker và nghe các đoạn chồng lấn.
+RQ3 xuất JSON/CSV và PNG cho bốn biến thể, thresholds 0.20/0.30/0.50. Đường dùng **ngân sách thời lượng lượt nói** trên trục X và ghi thêm coverage thực tế. Turn nguyên vẹn có thể khiến ngân sách chưa dùng hết; coverage random/full có thể khác nhau dù cùng ngân sách. Mỗi từ tham chiếu thuộc nhiều nhất một turn, chia theo thời gian giao nhau. Nhãn `is_bad` so lời ASR của turn với đúng phần từ đó; turn không nhận từ nào là báo động giả. “Remaining WER” là tỷ lệ từ tham chiếu còn sai: turn được soát tính 0 lỗi, từ không turn nào phủ vẫn là lỗi, và soát thêm một turn không làm tỷ lệ tăng. Số này khác WER và cpWER cả file ở RQ1. Tỷ lệ thời lượng bỏ sót được báo riêng. Cần phân tích thêm sai speaker và nghe các đoạn chồng lấn.
 
-AMI sanity check, oracle WER trên VIVOS test, so sánh Whisper turbo trên tập con, độ đúng flag và benchmark T4 đều cần chạy trên dữ liệu thật. Notebook `notebooks/inference.ipynb` hỗ trợ chạy inference/benchmark trên Colab. Bộ phụ và input masking là thí nghiệm sau phần bắt buộc.
+AMI sanity check, oracle WER trên VIVOS test và bảng 9 điều kiện là cổng trước khi viết kết quả. Website cần 3 bản ghi họp công khai: nghe các đoạn bị gắn cờ, sửa, đổi tên, xuất file. Gán nhãn tay một cuộc khoảng 5 phút chỉ khi cần một số ngoài mô phỏng. So sánh Whisper turbo, Input Masking và benchmark T4 làm sau bảng chính, trên Colab nếu còn thời gian; thiếu thì ghi vào báo cáo. Notebook `notebooks/inference.ipynb` hỗ trợ chạy inference/benchmark trên Colab. Bộ phụ 60 phiên và EC2 không nằm trong phần bảo vệ.
 
 ## 5. Kiểm thử phần mềm
 
