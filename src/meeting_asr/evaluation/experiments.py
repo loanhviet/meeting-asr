@@ -7,11 +7,13 @@ import csv
 import json
 from collections import defaultdict
 from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 
 from meeting_asr.evaluation.detection import overlap_detection_score, overlap_regions
+from meeting_asr.evaluation.log import append_experiment_rows
 from meeting_asr.evaluation.metrics import (
     cp_word_error_rate,
     diarization_error_rate,
@@ -20,6 +22,7 @@ from meeting_asr.evaluation.metrics import (
 )
 from meeting_asr.io import _atomic_text, read_rttm, read_transcript_json
 from meeting_asr.pipeline import run_pipeline
+from meeting_asr.runtime import git_commit
 from meeting_asr.settings import config_hash
 
 
@@ -84,7 +87,46 @@ def experiment_manifest(path):
     return payload
 
 
-def run_experiments(manifest, config, out, backends=("pyannote", "ecapa")):
+def _prediction_rtf(prediction_dir):
+    try:
+        payload = json.loads((Path(prediction_dir) / "run.json").read_text())
+        return payload["result"]["rtf"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+        return None
+
+
+def experiment_log_rows(rows, config, created=None, commit=None):
+    """One spec log row per cascaded session. Miss, FA and confusion are relaxed."""
+    stamp = created or datetime.now(UTC).strftime("%Y-%m-%d_%H%M%S")
+    recorded = commit if commit is not None else git_commit()
+    logged = []
+    for index, row in enumerate(rows):
+        logged.append(
+            {
+                "run_id": f"{stamp}_{index:03d}",
+                "git_commit": recorded,
+                "config_hash": row.get("config_hash"),
+                "dataset": row.get("condition"),
+                "diar_backend": row.get("backend"),
+                "masking": config["asr"].get("masking", "none"),
+                "der_lenient": row.get("relaxed_der"),
+                "der_strict": row.get("strict_der"),
+                "miss": row.get("relaxed_miss"),
+                "fa": row.get("relaxed_false_alarm"),
+                "confusion": row.get("relaxed_confusion"),
+                "wer": row.get("wer"),
+                "cpwer_oracle": row.get("oracle_cpwer"),
+                "cpwer_cascaded": row.get("cpwer"),
+                "rtf": _prediction_rtf(row["prediction_dir"])
+                if row.get("prediction_dir")
+                else None,
+                "notes": (f"conversation={row.get('conversation_id')}; miss/fa/confusion=relaxed"),
+            }
+        )
+    return logged
+
+
+def run_experiments(manifest, config, out, backends=("pyannote", "ecapa"), log_path=None):
     if config["asr"].get("masking", "none") != "none":
         raise ValueError("RQ2 requires masking=none for oracle and cascaded")
     payload = experiment_manifest(manifest)
@@ -165,4 +207,5 @@ def run_experiments(manifest, config, out, backends=("pyannote", "ecapa")):
                 indent=2,
             ),
         )
+    append_experiment_rows(experiment_log_rows(rows, config), log_path)
     return rows

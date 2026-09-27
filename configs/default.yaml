@@ -31,6 +31,7 @@ asr:
   boundary_pad: 0.1
   temperature: 0.0
   masking: none
+  collect_no_speech: false
 
 postprocess:
   merge_gap: 0.8

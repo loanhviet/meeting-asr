@@ -27,6 +27,19 @@ class Decoder(Protocol):
     def decode(self, waveforms: list[np.ndarray], sr: int) -> list[Decoded]: ...
 
 
+def no_speech_probability(logits, token_id):
+    """Softmax probability of one token. Out-of-range ids stay missing."""
+    if token_id is None or token_id < 0 or token_id >= len(logits):
+        return None
+    shifted = np.asarray(logits, dtype=np.float64)
+    shifted = shifted - np.max(shifted)
+    weights = np.exp(shifted)
+    total = float(weights.sum())
+    if not np.isfinite(total) or total <= 0:
+        return None
+    return float(weights[token_id] / total)
+
+
 def join_overlap(left: str, right: str) -> str:
     a, b = left.split(), right.split()
     for width in range(min(30, len(a), len(b)), 0, -1):
@@ -64,7 +77,14 @@ def chunk_ranges(audio: AudioBundle, start: float, end: float, maximum: float) -
 
 
 class WhisperDecoder:
-    def __init__(self, model_name: str, language="vi", device="auto", temperature=0.0):
+    def __init__(
+        self,
+        model_name: str,
+        language="vi",
+        device="auto",
+        temperature=0.0,
+        collect_no_speech=False,
+    ):
         try:
             import torch
             from transformers import AutoProcessor, WhisperForConditionalGeneration
@@ -84,7 +104,50 @@ class WhisperDecoder:
             .eval()
         )
         self.language = language
-        logger.info("no_speech_prob is unavailable in this generation adapter; recorded as null")
+        self.collect_no_speech = bool(collect_no_speech)
+        self.no_speech_token_id = self._no_speech_token_id() if self.collect_no_speech else None
+        if not self.collect_no_speech:
+            logger.info("no_speech_prob collection is disabled; recorded as null")
+        elif self.no_speech_token_id is None:
+            logger.info("no_speech token is absent; no_speech_prob is recorded as null")
+
+    def _no_speech_token_id(self):
+        tokenizer = self.processor.tokenizer
+        token_id = tokenizer.convert_tokens_to_ids("<|nospeech|>")
+        unknown = getattr(tokenizer, "unk_token_id", None)
+        if isinstance(token_id, int) and token_id >= 0 and token_id != unknown:
+            return token_id
+        timestamps = getattr(self.model.generation_config, "no_timestamps_token_id", None)
+        if isinstance(timestamps, int) and timestamps > 0:
+            return timestamps - 1
+        return None
+
+    def _no_speech_probabilities(self, features):
+        if self.no_speech_token_id is None:
+            return None
+        import torch
+
+        try:
+            decoder_input = torch.full(
+                (features["input_features"].shape[0], 1),
+                self.model.config.decoder_start_token_id,
+                dtype=torch.long,
+                device=self.device,
+            )
+            with torch.inference_mode():
+                logits = self.model(
+                    features["input_features"],
+                    attention_mask=features.get("attention_mask"),
+                    decoder_input_ids=decoder_input,
+                ).logits[:, -1, :]
+            return [
+                no_speech_probability(row.float().cpu().numpy(), self.no_speech_token_id)
+                for row in logits
+            ]
+        except (RuntimeError, ValueError, TypeError):
+            logger.warning("no_speech_prob could not be read; recorded as null")
+            release_gpu()
+            return None
 
     def decode(self, waveforms: list[np.ndarray], sr: int) -> list[Decoded]:
         import torch
@@ -115,6 +178,7 @@ class WhisperDecoder:
         texts = self.processor.batch_decode(output.sequences, skip_special_tokens=True)
         tokens = output.sequences[:, -scores.shape[1] :]
         special = set(self.processor.tokenizer.all_special_ids)
+        silence = self._no_speech_probabilities(inputs) if self.collect_no_speech else None
         results = []
         for row, text in enumerate(texts):
             kept = [
@@ -127,6 +191,7 @@ class WhisperDecoder:
                     text.strip(),
                     float(np.mean(kept)) if kept else None,
                     min(kept) if kept else None,
+                    None if silence is None else silence[row],
                 )
             )
         return results
@@ -148,13 +213,14 @@ def transcribe(
     boundary_pad=0.1,
     temperature=0.0,
     masking="none",
+    collect_no_speech=False,
     device="auto",
     decoder: Decoder | None = None,
 ) -> list[Utterance]:
     if batch_size < 1 or not 0 <= boundary_pad <= 0.5:
         raise ValueError("invalid ASR batch size or boundary padding")
-    if masking not in {"none", "input_masking"}:
-        raise ValueError("unknown input masking mode")
+    if masking != "none":
+        raise ValueError("masking must be 'none' until the Input Masking comparison is implemented")
     tasks = []
     valid = []
     for segment, signals in zip(diarization.segments, diarization.signals, strict=True):
@@ -169,17 +235,15 @@ def transcribe(
             a = max(0, int((start - boundary_pad) * audio.sr))
             b = min(len(audio.waveform), int((end + boundary_pad) * audio.sr))
             waveform = audio.waveform[a:b].copy()
-            if masking == "input_masking":
-                lo, hi = max(a, int(segment.start * audio.sr)), min(b, int(segment.end * audio.sr))
-                waveform[: lo - a] = 0
-                waveform[hi - a :] = 0
             overlap = chunk_index > 0 and start < ranges[chunk_index - 1][1] - 1e-6
             tasks.append((index, chunk_index, start, end, waveform, overlap))
     if not tasks:
         return []
     owned = decoder is None
     if owned:
-        decoder = WhisperDecoder(model_name, language, device, temperature)
+        decoder = WhisperDecoder(
+            model_name, language, device, temperature, collect_no_speech=collect_no_speech
+        )
     decoded = {}
     ordered = sorted(tasks, key=lambda t: len(t[4]))
     cursor, size = 0, batch_size

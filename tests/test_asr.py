@@ -1,6 +1,7 @@
 import numpy as np
+import pytest
 
-from meeting_asr.asr import Decoded, chunk_ranges, transcribe
+from meeting_asr.asr import Decoded, chunk_ranges, no_speech_probability, transcribe
 from meeting_asr.diarization import DiarizationResult
 from meeting_asr.models import AudioBundle, DiarSignals, Segment
 
@@ -51,3 +52,20 @@ def test_silence_boundary_does_not_delete_legitimate_repeated_words():
 
     results = transcribe(audio, diar, max_segment_sec=3, decoder=Decoder())
     assert results[0].text == "xin chào xin chào"
+
+
+def test_no_speech_probability_and_rejected_masking():
+    assert no_speech_probability([0.0, 20.0], 1) == pytest.approx(1)
+    assert no_speech_probability([0.0, 0.0], 1) == pytest.approx(0.5)
+    assert no_speech_probability([1.0], None) is None
+    audio = AudioBundle(np.full(16000 * 2, 0.2, dtype=np.float32), 16000, 16000, "fixture")
+    diar = DiarizationResult([Segment(0, 2, "A")], [DiarSignals(0)], "fixture")
+
+    class Decoder:
+        def decode(self, waves, sr):
+            return [Decoded("xin chào", -0.2, -1.0, 0.25)]
+
+    result = transcribe(audio, diar, decoder=Decoder())
+    assert result[0].asr.no_speech_prob == pytest.approx(0.25)
+    with pytest.raises(ValueError, match="masking"):
+        transcribe(audio, diar, masking="input_masking", decoder=Decoder())

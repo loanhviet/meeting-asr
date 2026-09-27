@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import copy
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
+from meeting_asr.evaluation.log import append_experiment_rows
 from meeting_asr.io import _atomic_text
 from meeting_asr.pipeline import dependency_versions, run_pipeline
+from meeting_asr.runtime import git_commit
+from meeting_asr.settings import config_hash
 
 
-def benchmark(audio, config, out, repetitions=1, cached=False):
+def benchmark(audio, config, out, repetitions=1, cached=False, log_path=None):
     if repetitions < 1:
         raise ValueError("repetitions must be positive")
     try:
@@ -46,4 +50,22 @@ def benchmark(audio, config, out, repetitions=1, cached=False):
         "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
     }
     _atomic_text(destination / "benchmark.json", json.dumps(payload, indent=2))
+    stamp = datetime.now(UTC).strftime("%Y-%m-%d_%H%M%S")
+    commit = git_commit()
+    append_experiment_rows(
+        [
+            {
+                "run_id": f"{stamp}_{row['run']:03d}",
+                "git_commit": commit,
+                "config_hash": config_hash(options),
+                "dataset": Path(audio).stem,
+                "diar_backend": options["diarization"]["backend"],
+                "masking": options["asr"].get("masking", "none"),
+                "rtf": row["rtf"],
+                "notes": "benchmark; peak allocated VRAM is not logged in this schema",
+            }
+            for row in rows
+        ],
+        log_path,
+    )
     return payload
