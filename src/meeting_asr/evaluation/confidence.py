@@ -1,4 +1,9 @@
-"""Turn error labels, duration-budget risk curves, ablation, and dev-only calibration."""
+"""Turn error labels, duration-budget risk curves, ablation, and dev-only calibration.
+
+Each reference word is assigned to at most one turn. `is_bad` compares a turn
+with that slice only. Remaining WER is the share of reference words still wrong
+after reviewed turns are treated as corrected. It is not the meeting WER.
+"""
 
 from __future__ import annotations
 
@@ -25,29 +30,109 @@ class TurnError:
     is_bad: bool
 
 
-def label_turns(turns, reference, threshold=0.3):
+def _words(text):
+    return normalize_for_wer(text).split()
+
+
+def _overlap(start, end, other_start, other_end):
+    return max(0.0, min(end, other_end) - max(start, other_start))
+
+
+def _exclusive_counts(total, weights):
+    if total == 0:
+        return [0] * len(weights)
+    if not weights:
+        return []
+    mass = sum(weights)
+    if mass <= 0:
+        counts = [0] * len(weights)
+        counts[0] = total
+        return counts
+    raw = [total * weight / mass for weight in weights]
+    counts = [int(np.floor(value)) for value in raw]
+    leftover = total - sum(counts)
+    order = sorted(range(len(weights)), key=lambda i: (raw[i] - counts[i], -i), reverse=True)
+    for index in order[:leftover]:
+        counts[index] += 1
+    return counts
+
+
+def speaker_mapping(turns, reference):
     from pyannote.metrics.matcher import HungarianMapper
 
-    mapping = HungarianMapper()(
-        _annotation([u for t in turns for u in t.utterances]), _annotation(reference.utterances)
-    )
+    hypothesis = _annotation([utterance for turn in turns for utterance in turn.utterances])
+    return HungarianMapper()(hypothesis, _annotation(reference.utterances))
+
+
+def meeting_word_sequences(turns, reference):
+    """Give each reference word to at most one turn of the mapped speaker."""
+    mapping = speaker_mapping(turns, reference)
+    slices = {turn.turn_id: [] for turn in turns}
+    for utterance in sorted(reference.utterances, key=lambda u: (u.start, u.end, u.speaker)):
+        words = _words(utterance.text)
+        owners = []
+        for turn in turns:
+            if mapping.get(turn.speaker) != utterance.speaker:
+                continue
+            span = _overlap(turn.start, turn.end, utterance.start, utterance.end)
+            if span > 0:
+                owners.append((turn.start, turn.end, turn.turn_id, span))
+        owners.sort()
+        counts = _exclusive_counts(len(words), [owner[3] for owner in owners])
+        cursor = 0
+        for owner, count in zip(owners, counts, strict=True):
+            slices[owner[2]].extend(words[cursor : cursor + count])
+            cursor += count
+    reference_words = [
+        word
+        for utterance in sorted(reference.utterances, key=lambda u: (u.start, u.end, u.speaker))
+        for word in _words(utterance.text)
+    ]
+    return slices, reference_words
+
+
+def _hypothesis_words(turn):
+    words = []
+    for utterance in sorted(turn.utterances, key=lambda u: (u.start, u.end, u.speaker)):
+        words.extend(_words(utterance.text))
+    return words
+
+
+def _slice_errors(reference_words, hypothesis):
+    if not reference_words and not hypothesis:
+        return 0
+    errors, _ = _word_errors(" ".join(reference_words), " ".join(hypothesis))
+    return errors
+
+
+def _remaining_rate(turns, slices, reference_words, chosen):
+    """Reviewed turns contribute no errors. Unassigned reference words stay wrong."""
+    missed = len(reference_words) - sum(len(words) for words in slices.values())
+    errors = missed
+    for turn in turns:
+        if turn.turn_id in chosen:
+            continue
+        errors += _slice_errors(slices.get(turn.turn_id, []), _hypothesis_words(turn))
+    if not reference_words:
+        return 0.0 if errors == 0 else 1.0
+    return errors / len(reference_words)
+
+
+def remaining_meeting_wer(turns, reference, chosen):
+    slices, reference_words = meeting_word_sequences(turns, reference)
+    return _remaining_rate(turns, slices, reference_words, chosen)
+
+
+def label_turns(turns, reference, threshold=0.3):
+    slices, _ = meeting_word_sequences(turns, reference)
     labels = []
     for turn in turns:
-        speaker = mapping.get(turn.speaker)
-        matched = [
-            u
-            for u in sorted(reference.utterances, key=lambda u: u.start)
-            if u.speaker == speaker and u.start < turn.end and u.end > turn.start
-        ]
-        ref = normalize_for_wer(" ".join(u.text for u in matched))
-        hyp = normalize_for_wer(" ".join(u.text for u in turn.utterances))
-        errors, words = _word_errors(ref, hyp)
-        wer = errors / words if words else (1.0 if hyp else 0.0)
-        labels.append(
-            TurnError(
-                turn.turn_id, errors, words, wer, not matched or speaker is None or wer > threshold
-            )
-        )
+        reference_words = slices.get(turn.turn_id, [])
+        hypothesis = _hypothesis_words(turn)
+        errors = _slice_errors(reference_words, hypothesis)
+        words = len(reference_words)
+        wer = errors / words if words else (1.0 if hypothesis else 0.0)
+        labels.append(TurnError(turn.turn_id, errors, words, wer, not words or wer > threshold))
     # Speech with no predicted turn of any speaker has no reviewable row.
     missed_duration = 0.0
     for utterance in reference.utterances:
@@ -65,23 +150,21 @@ def label_turns(turns, reference, threshold=0.3):
     return labels, missed_duration / total if total else 0.0
 
 
-def variant_metrics(turns: list[Turn], labels: list[TurnError], coverage=0.2):
+def variant_metrics(turns: list[Turn], labels: list[TurnError], coverage=0.2, reference=None):
+    if reference is None:
+        raise ValueError("remaining WER requires the reference transcript")
     by_id = {label.turn_id: label for label in labels}
     selected = select_review(turns, coverage)
     positives = {label.turn_id for label in labels if label.is_bad}
     tp = len(selected & positives)
     precision = tp / len(selected) if selected else 0.0
     recall = tp / len(positives) if positives else 0.0
-    denominator = sum(label.reference_words for label in labels)
+    slices, reference_words = meeting_word_sequences(turns, reference)
+    denominator = len(reference_words)
     total_duration = sum(t.end - t.start for t in turns)
 
-    # False alarm words contribute errors but cannot disappear through denominator changes.
     def risk(chosen):
-        return (
-            sum(label.errors for label in labels if label.turn_id not in chosen) / denominator
-            if denominator
-            else None
-        )
+        return _remaining_rate(turns, slices, reference_words, chosen)
 
     curve = []
     for requested in np.linspace(0, 1, 101):
@@ -133,7 +216,9 @@ def evaluate_confidence(minutes, reference, options, seed=42, thresholds=(0.2, 0
         for variant in VARIANTS:
             config = {**options, "variant": variant, "seed": seed}
             scored = score_confidence(minutes.turns, **config)
-            variants[variant] = variant_metrics(scored, labels, options.get("target_coverage", 0.2))
+            variants[variant] = variant_metrics(
+                scored, labels, options.get("target_coverage", 0.2), reference
+            )
         result[str(threshold)] = {"missed_speech_ratio": missed, "variants": variants}
     return result
 
@@ -259,7 +344,7 @@ def run_confidence_evaluation(manifest, config, out):
                 )
             ax.set(
                 xlabel="Review budget (predicted speaker-time)",
-                ylabel="Remaining turn WER",
+                ylabel="Uncorrected reference-word rate",
                 title=f"Session {index + 1}; error threshold {threshold}",
             )
             ax.legend()

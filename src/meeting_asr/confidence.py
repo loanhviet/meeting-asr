@@ -113,7 +113,7 @@ def score_confidence(
             phrase in " ".join(u.text.casefold() for u in turn.utterances) for phrase in BLACKLIST
         ):
             turn.confidence = min(turn.confidence, 0.05)
-            turn.flag_reasons.append("hallucination_blacklist")
+            turn.flag_reasons.append("nghi cụm ảo giác đã biết")
         if variant == "baseline_random":
             turn.confidence = rng.random()
             turn.flag_reasons = ["chọn ngẫu nhiên để đối chiếu"]

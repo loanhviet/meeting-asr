@@ -36,12 +36,30 @@ def test_budget_skips_long_turns_and_breaks_ties_by_id():
     assert select_review(result, 0) == set()
 
 
+def test_each_weak_signal_has_its_vietnamese_reason():
+    speech, repeat, speaker, short = (turn(index) for index in range(4))
+    speech.utterances[0].asr.no_speech_prob = 0.8
+    repeat.utterances[0].asr.compression_ratio = 6
+    speaker.utterances[0].diar = DiarSignals(0, 0.2)
+    short.utterances[0].end = short.end = short.start + 0.3
+    reasons = {
+        item.turn_id: item.flag_reasons
+        for item in score_confidence(
+            [speech, repeat, speaker, short], margin_ref=1, target_coverage=0
+        )
+    }
+    assert "nghi không có tiếng nói" in reasons["0"]
+    assert "nghi lặp/ảo giác" in reasons["1"]
+    assert "khó phân biệt người nói" in reasons["2"]
+    assert "đoạn quá ngắn" in reasons["3"]
+
+
 def test_blacklist_keeps_text_and_random_is_reproducible():
     turns = [turn(i) for i in range(10)]
     turns[0].utterances[0].text = "cảm ơn các bạn đã xem"
     result = score_confidence(turns)
     assert result[0].confidence <= 0.05
-    assert "hallucination_blacklist" in result[0].flag_reasons
+    assert "nghi cụm ảo giác đã biết" in result[0].flag_reasons
     assert result[0].utterances[0].text == turns[0].utterances[0].text
     a = score_confidence(turns, variant="baseline_random")
     b = score_confidence(turns, variant="baseline_random")
