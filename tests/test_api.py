@@ -57,3 +57,49 @@ def test_oversized_upload_does_not_leave_partial_audio(tmp_path, monkeypatch):
         assert client.post("/api/jobs", files={"file": ("x.wav", b"12345")}).status_code == 413
     assert not list(tmp_path.rglob("upload.part"))
     assert app.state.store.list_jobs() == []
+
+
+def test_speaker_review_api_and_template_validation(tmp_path):
+    app = create_app(load_config(), tmp_path, start_worker=False)
+    with TestClient(app) as client:
+        job_id = client.post("/api/jobs", files={"file": ("x.wav", b"audio")}).json()["job_id"]
+        write_minutes_json(
+            app.state.store.artifact_dir(job_id) / "minutes.json",
+            MeetingMinutes(
+                "x", 6, 2, [Turn("a", 0, 3, "A", "xin chào", []), Turn("b", 3, 6, "B", "chào", [])]
+            ),
+        )
+        app.state.store.update(job_id, status="complete")
+        response = client.patch(
+            f"/api/jobs/{job_id}/turns/a", json={"speaker_id": "B", "expected_revision": 0}
+        )
+        assert response.status_code == 200
+        assert response.json()["edited"]["num_speakers"] == 1
+        assert (
+            client.patch(f"/api/jobs/{job_id}/turns/a", json={"speaker_id": "X"}).status_code == 422
+        )
+        response = client.post(
+            f"/api/jobs/{job_id}/speakers/merge",
+            json={
+                "source_speaker": "B",
+                "target_speaker": "A",
+                "expected_revision": 1,
+            },
+        )
+        assert response.status_code == 200
+        assert client.get(f"/api/jobs/{job_id}/history").json()[0]["kind"] == "speaker_merge"
+        assert (
+            client.post(
+                f"/api/jobs/{job_id}/speakers/merge",
+                json={
+                    "source_speaker": "A",
+                    "target_speaker": "B",
+                    "expected_revision": 0,
+                },
+            ).status_code
+            == 409
+        )
+        assert (
+            client.post(f"/api/jobs/{job_id}/summary", json={"template": "unknown"}).status_code
+            == 422
+        )

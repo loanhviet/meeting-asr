@@ -22,8 +22,15 @@ MAX_UPLOAD = 200 * 1024 * 1024
 class TurnEdit(BaseModel):
     text: str | None = Field(default=None, max_length=50000)
     speaker_name: str | None = Field(default=None, min_length=1, max_length=100)
+    speaker_id: str | None = Field(default=None, min_length=1, max_length=100)
     reviewed: bool = True
     expected_revision: int | None = Field(default=None, ge=0)
+
+
+class SpeakerMerge(BaseModel):
+    source_speaker: str = Field(min_length=1, max_length=100)
+    target_speaker: str = Field(min_length=1, max_length=100)
+    expected_revision: int = Field(ge=0)
 
 
 class SummaryRequest(BaseModel):
@@ -142,6 +149,21 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
             return store.edit(job_id, turn_id, **update.model_dump())
         except RevisionConflict as exc:
             raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/api/jobs/{job_id}/history")
+    def history(job_id: str):
+        return store.history(job_id)
+
+    @app.post("/api/jobs/{job_id}/speakers/merge")
+    def merge(job_id: str, update: SpeakerMerge):
+        try:
+            return store.merge_speakers(job_id, **update.model_dump())
+        except RevisionConflict as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @app.post("/api/jobs/{job_id}/retry", status_code=202)
     def retry(job_id: str):
