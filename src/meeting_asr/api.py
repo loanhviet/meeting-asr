@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +24,10 @@ class TurnEdit(BaseModel):
     speaker_name: str | None = Field(default=None, min_length=1, max_length=100)
     reviewed: bool = True
     expected_revision: int | None = Field(default=None, ge=0)
+
+
+class SummaryRequest(BaseModel):
+    template: Literal["project", "standup", "customer"] = "project"
 
 
 def public_job(job):
@@ -148,7 +152,7 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
         return {"job_id": job_id}
 
     @app.post("/api/jobs/{job_id}/summary", status_code=202)
-    def regenerate(job_id: str):
+    def regenerate(job_id: str, options: SummaryRequest | None = None):
         job = store.get(job_id)
         store.result(job_id)
         if job["status"] not in {"complete", "failed"}:
@@ -156,7 +160,13 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
         if not config["llm"]["enabled"]:
             raise HTTPException(409, "Configure and enable LLM summarization first")
         store.update(
-            job_id, status="queued", stage="queued", kind="summary", progress=0, error=None
+            job_id,
+            status="queued",
+            stage="queued",
+            kind="summary",
+            progress=0,
+            error=None,
+            summary_template=options.template if options else "project",
         )
         return {"job_id": job_id}
 

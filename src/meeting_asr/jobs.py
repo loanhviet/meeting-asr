@@ -16,6 +16,7 @@ from filelock import FileLock
 
 from meeting_asr.io import minutes_from_dict
 from meeting_asr.pipeline import project_path, run_pipeline
+from meeting_asr.summarize import resolve_evidence
 
 
 class RevisionConflict(ValueError):
@@ -46,6 +47,9 @@ class JobStore:
                     PRIMARY KEY (job_id, speaker)
                 );
             """)
+            columns = {row[1] for row in db.execute("PRAGMA table_info(jobs)")}
+            if "summary_template" not in columns:
+                db.execute("ALTER TABLE jobs ADD COLUMN summary_template TEXT DEFAULT 'project'")
 
     @contextmanager
     def connect(self):
@@ -89,6 +93,7 @@ class JobStore:
             "kind",
             "summary_json",
             "summary_error",
+            "summary_template",
         }
         if not fields or set(fields) - allowed:
             raise ValueError("invalid job update")
@@ -132,6 +137,9 @@ class JobStore:
             and job["summary_revision"] is not None
             and job["summary_revision"] != job["revision"]
         )
+        evidence = resolve_evidence(edited, edited["turns"])
+        for field in ("summary_points", "decisions", "action_items"):
+            edited[field] = evidence.get(field, [])
         # Never present an old summary as current in exported artifacts.
         return {
             "original": original,
@@ -140,6 +148,9 @@ class JobStore:
             "summary_stale": stale,
             "summary_error": job["summary_error"],
             "speaker_names": names,
+            "summary_revision": job["summary_revision"],
+            "summary_template": job["summary_template"] or "project",
+            "summary_grounded": bool(edited.get("summary_points")),
         }
 
     def edit(
@@ -238,7 +249,7 @@ class JobWorker:
                 minutes = minutes_from_dict(edited)
                 self.store.update(job_id, stage="M6", progress=0.9)
                 result = Summarizer(
-                    self.config["llm"],
+                    {**self.config["llm"], "template": job["summary_template"] or "project"},
                     project_path(self.config["paths"]["cache_dir"]) / "summaries",
                 ).summarize(minutes.turns)
                 self.store.update(

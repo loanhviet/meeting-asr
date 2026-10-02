@@ -154,6 +154,8 @@ def run_pipeline(
                 summary["topics"],
                 summary["action_items"],
             )
+            minutes.summary_points = summary["summary_points"]
+            minutes.decisions = summary["decisions"]
         except (ValueError, RuntimeError, KeyError, TypeError) as exc:
             summary_error = str(exc)
     _atomic_text(

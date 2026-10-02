@@ -125,6 +125,8 @@ class MeetingMinutes:
     summary: str | None = None
     topics: list[str] = field(default_factory=list)
     action_items: list[dict[str, Any]] = field(default_factory=list)
+    summary_points: list[dict[str, Any]] = field(default_factory=list)
+    decisions: list[dict[str, Any]] = field(default_factory=list)
 
 
 SCHEMA_VERSION = 1

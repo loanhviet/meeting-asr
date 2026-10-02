@@ -16,6 +16,22 @@ def timestamp(seconds: float, separator=",") -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}{separator}{millis:03d}"
 
 
+def evidence_text(item, turns):
+    by_id = {turn.get("turn_id"): turn for turn in turns}
+    sources = [by_id[i] for i in item.get("source_turn_ids", []) if i in by_id]
+    if not sources:
+        return " · chưa có dẫn chứng"
+    refs = ", ".join(
+        f"{timestamp(t['start'], '.')}–{timestamp(t['end'], '.')} ({t['speaker']})" for t in sources
+    )
+    review = (
+        " · nguồn cần soát"
+        if any(t.get("flagged") and not t.get("reviewed") for t in sources)
+        else ""
+    )
+    return " · nguồn: " + refs + review
+
+
 def export_markdown(view: dict) -> bytes:
     minutes = view["edited"]
     lines = [
@@ -27,7 +43,18 @@ def export_markdown(view: dict) -> bytes:
     if view["summary_stale"]:
         lines += ["> Transcript đã thay đổi; cần tạo lại tóm tắt và việc cần làm.", ""]
     elif minutes.get("summary"):
-        lines += ["## Tóm tắt", "", minutes["summary"], ""]
+        lines += ["## Tóm tắt", ""]
+        if minutes.get("summary_points"):
+            for item in minutes["summary_points"]:
+                lines.append("- " + item["text"] + evidence_text(item, minutes["turns"]))
+            lines.append("")
+        else:
+            lines += [minutes["summary"], ""]
+        if minutes.get("decisions"):
+            lines += ["## Quyết định", ""]
+            for item in minutes["decisions"]:
+                lines.append("- " + item["text"] + evidence_text(item, minutes["turns"]))
+            lines.append("")
         if minutes.get("topics"):
             lines += ["Chủ đề: " + ", ".join(minutes["topics"]), ""]
         if minutes.get("action_items"):
@@ -35,8 +62,9 @@ def export_markdown(view: dict) -> bytes:
             for item in minutes["action_items"]:
                 uncertain = " · cần xác nhận" if item["uncertain"] else ""
                 lines.append(
-                    f"- {item['speaker']}: {item['task']}"
+                    f"- {item['speaker'] or 'Chưa rõ người phụ trách'}: {item['task']}"
                     f" · hạn: {item['deadline'] or 'chưa nêu'}{uncertain}"
+                    + evidence_text(item, minutes["turns"])
                 )
             lines.append("")
     lines += ["## Nội dung", ""]
