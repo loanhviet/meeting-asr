@@ -55,6 +55,12 @@ class JobStore:
                     job_id TEXT NOT NULL, speaker TEXT NOT NULL, name TEXT NOT NULL,
                     PRIMARY KEY (job_id, speaker)
                 );
+                CREATE TABLE IF NOT EXISTS ask_answers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL,
+                    revision INTEGER NOT NULL, created REAL NOT NULL,
+                    request_key TEXT NOT NULL, payload TEXT NOT NULL,
+                    UNIQUE(job_id, request_key)
+                );
             """)
             db.execute("BEGIN IMMEDIATE")
             columns = {row[1] for row in db.execute("PRAGMA table_info(jobs)")}
@@ -118,13 +124,18 @@ class JobStore:
         return self.root / job_id / "artifacts"
 
     def result(self, job_id):
-        job = self.get(job_id)
-        path = self.artifact_dir(job_id) / "minutes.json"
-        if not path.is_file():
-            raise FileNotFoundError("job result is not ready")
-        original = json.loads(path.read_text(encoding="utf-8"))
-        edited = copy.deepcopy(original)
         with self.connect() as db:
+            # A single read snapshot keeps revision, names and turn edits consistent.
+            db.execute("BEGIN")
+            row = db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+            if row is None:
+                raise KeyError("job not found")
+            job = dict(row)
+            path = self.root / job_id / "artifacts" / "minutes.json"
+            if not path.is_file():
+                raise FileNotFoundError("job result is not ready")
+            original = json.loads(path.read_text(encoding="utf-8"))
+            edited = copy.deepcopy(original)
             edits = {
                 row["turn_id"]: dict(row)
                 for row in db.execute("SELECT * FROM edits WHERE job_id = ?", (job_id,))
@@ -170,6 +181,48 @@ class JobStore:
             "summary_template": job["summary_template"] or "project",
             "summary_grounded": bool(edited.get("summary_points")),
         }
+
+    def answers(self, job_id, request_key=None):
+        with self.connect() as db:
+            db.execute("BEGIN")
+            row = db.execute("SELECT revision FROM jobs WHERE id=?", (job_id,)).fetchone()
+            if row is None:
+                raise KeyError("job not found")
+            revision = row[0]
+            query = "SELECT * FROM ask_answers WHERE job_id=?"
+            args = [job_id]
+            if request_key is not None:
+                query += " AND request_key=?"
+                args.append(request_key)
+            rows = db.execute(query + " ORDER BY created DESC, id DESC LIMIT 20", args).fetchall()
+        return [
+            {
+                **json.loads(row["payload"]),
+                "id": row["id"],
+                "revision": row["revision"],
+                "created": row["created"],
+                "stale": row["revision"] != revision,
+            }
+            for row in rows
+        ]
+
+    def save_answer(self, job_id, revision, request_key, payload):
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self._check_revision(db, job_id, revision)
+            db.execute(
+                "INSERT INTO ask_answers (job_id, revision, created, request_key, payload) "
+                "VALUES (?, ?, ?, ?, ?) ON CONFLICT(job_id, request_key) "
+                "DO UPDATE SET created=excluded.created",
+                (
+                    job_id,
+                    revision,
+                    time.time(),
+                    request_key,
+                    json.dumps(payload, ensure_ascii=False),
+                ),
+            )
+        return self.answers(job_id, request_key)[0]
 
     def edit(
         self,
