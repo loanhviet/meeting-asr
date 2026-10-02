@@ -1,5 +1,5 @@
 import { Page } from "@playwright/test";
-import { EditEvent, Job, Minutes, ResultView } from "../lib/api";
+import { EditEvent, Job, MeetingAnswer, Minutes, ResultView } from "../lib/api";
 
 export function audioFixture() {
   const samples = 120 * 8000;
@@ -143,6 +143,7 @@ export async function installFixture(
     speaker_names: { A: "An", B: "Bình", C: "Người nói 03" },
   };
   const events: EditEvent[] = [];
+  const answers: MeetingAnswer[] = [];
   let uploaded = !options.empty;
   await page.route("**/api/**", async (route) => {
     const req = route.request(),
@@ -189,6 +190,58 @@ export async function installFixture(
     }
     if (path.endsWith("/history"))
       return route.fulfill({ json: [...events].reverse() });
+    if (path.endsWith("/questions")) {
+      if (req.method() === "GET")
+        return route.fulfill({
+          json: [...answers].reverse().map((answer) => ({
+            ...answer,
+            stale: answer.revision !== view.revision,
+          })),
+        });
+      const body = req.postDataJSON();
+      if (body.expected_revision !== view.revision)
+        return route.fulfill({
+          status: 409,
+          json: { detail: "transcript changed; reload before asking" },
+        });
+      if (options.llm === false)
+        return route.fulfill({
+          status: 409,
+          json: { detail: "Configure and enable LLM" },
+        });
+      const cached = answers.find(
+        (answer) =>
+          answer.question === body.question &&
+          answer.revision === view.revision,
+      );
+      if (cached) {
+        cached.created = Date.now() / 1000;
+        return route.fulfill({ json: cached });
+      }
+      const found = /kiểm thử|deadline|thời hạn|thứ/i.test(body.question);
+      const source = minutes.turns[1];
+      const answer: MeetingAnswer = {
+        id: answers.length + 1,
+        question: body.question,
+        revision: view.revision,
+        created: Date.now() / 1000,
+        stale: false,
+        status: found ? "found" : "not_found",
+        answer_points: found
+          ? [
+              {
+                text: `${source.speaker} nhận kiểm thử; thời hạn được nêu trong nguồn.`,
+                source_turn_ids: [source.turn_id],
+                uncertain: source.flagged && !source.reviewed,
+                needs_review: source.flagged && !source.reviewed,
+                sources: [source],
+              },
+            ]
+          : [],
+      };
+      answers.push(answer);
+      return route.fulfill({ json: answer });
+    }
     if (path.includes("/turns/")) {
       const update = req.postDataJSON();
       if (update.expected_revision !== view.revision)
@@ -292,5 +345,5 @@ export async function installFixture(
       });
     return route.fulfill({ json: job });
   });
-  return { job, view, minutes, events };
+  return { job, view, minutes, events, answers };
 }

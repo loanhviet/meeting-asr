@@ -80,6 +80,17 @@ export type EditEvent = {
     speaker_name?: { speaker_id: string; before: string; after: string };
   };
 };
+export type MeetingAnswer = {
+  id: number;
+  question: string;
+  revision: number;
+  created: number;
+  stale: boolean;
+  status: "found" | "not_found";
+  answer_points: (Omit<Claim, "sources"> & {
+    sources: (EvidenceSource & { text: string })[];
+  })[];
+};
 export async function request<T>(
   path: string,
   options?: RequestInit,
@@ -93,7 +104,7 @@ export async function request<T>(
         : "Yêu cầu không thành công.";
     throw new Error(
       detail.includes("transcript changed")
-        ? "Nội dung đã thay đổi ở phiên khác. Hãy tải lại trước khi lưu."
+        ? "Nội dung đã thay đổi ở phiên khác. Hãy mở lại cuộc họp trước khi gửi yêu cầu."
         : detail,
     );
   }

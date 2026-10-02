@@ -24,6 +24,7 @@ const paths = {
   link: "m10 13 4-4m-5 7-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 0 2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0",
   alert: "m12 3 10 18H2zM12 9v4m0 3v1",
   edit: "m16 3 5 5-12 12H4v-5zM13 6l5 5",
+  chat: "M21 11a8 8 0 0 1-8 8H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4zM7 8h10M7 12h7",
 } as const;
 export type IconName = keyof typeof paths;
 export function Icon({

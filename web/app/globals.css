@@ -753,6 +753,232 @@ progress::-moz-progress-bar {
   border-bottom-color: var(--accent);
   font-weight: 600;
 }
+.ask-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 310px) minmax(0, 1fr);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  overflow: hidden;
+}
+.ask-panel > .panel-heading {
+  grid-column: 1 / -1;
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border);
+}
+.ask-panel .panel-heading p {
+  margin-top: 8px;
+  max-width: 620px;
+  line-height: 1.6;
+}
+.ask-mark {
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.ask-compose,
+.ask-history {
+  min-width: 0;
+  padding: 24px 28px;
+}
+.ask-compose {
+  border-right: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.ask-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.ask-compose label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 9px;
+}
+.ask-compose textarea {
+  width: 100%;
+  display: block;
+  resize: vertical;
+  border: 1px solid var(--border);
+  background: #f8f9fc;
+  border-radius: 8px;
+  padding: 13px 15px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+  min-height: 100px;
+}
+.ask-compose textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ask-compose-actions,
+.ask-history-heading,
+.ask-answer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+.ask-compose .notice {
+  margin: 14px 0;
+}
+.ask-pending {
+  color: var(--accent);
+  font-size: 12px;
+  padding: 12px 0;
+}
+.ask-history-heading {
+  padding: 20px 0;
+  margin-top: 0;
+}
+@media (max-width: 1080px) {
+  .ask-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ask-compose {
+    border-right: 0;
+  }
+  .ask-history {
+    border-top: 1px solid var(--border);
+  }
+}
+.ask-history-heading h3 {
+  font-size: 13px;
+}
+.ask-empty {
+  text-align: center;
+  padding: 34px 12px 50px;
+  color: var(--muted);
+}
+.ask-empty > svg {
+  margin: 0 auto 15px;
+  color: var(--accent);
+}
+.ask-empty h3 {
+  font-size: 17px;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.ask-empty p,
+.ask-no-answer p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.ask-answer {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+}
+.ask-question {
+  background: #f6f7fc;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 20px;
+}
+.ask-question svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.ask-question h3 {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ask-answer-body {
+  padding: 0 20px 20px;
+}
+.ask-answer-meta {
+  margin: 16px 0;
+}
+.ask-point > p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 14px 0 10px;
+}
+.ask-evidence {
+  border-left: 2px solid var(--accent);
+  background: #f8f9fd;
+  margin-top: 12px;
+  padding: 12px 14px;
+}
+.ask-evidence > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ask-evidence strong {
+  font-size: 11px;
+}
+.ask-evidence blockquote {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+.ask-answer-body > .text-button {
+  margin-top: 14px;
+}
+.ask-no-answer {
+  background: #f8f9fc;
+  border-radius: 6px;
+  padding: 14px;
+  color: var(--muted);
+}
+.ask-no-answer strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+.ask-no-answer p {
+  margin-top: 7px;
+}
+@media (max-width: 760px) {
+  .ask-panel > .panel-heading,
+  .ask-compose,
+  .ask-history {
+    padding: 18px 16px;
+  }
+  .ask-panel .panel-heading {
+    align-items: flex-start;
+  }
+  .ask-mark {
+    width: 34px;
+    height: 34px;
+  }
+  .ask-suggestions .button {
+    font-size: 10px;
+  }
+  .ask-compose-actions {
+    align-items: flex-start;
+  }
+  .ask-compose-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+  .ask-question {
+    padding: 14px;
+  }
+  .ask-answer-body {
+    padding: 0 14px 14px;
+  }
+  .ask-evidence {
+    padding: 10px;
+  }
+}
 .review-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 355px;

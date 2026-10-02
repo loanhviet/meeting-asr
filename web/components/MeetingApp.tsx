@@ -13,6 +13,7 @@ import {
 import { Icon } from "./Icon";
 import { MinutesPanel } from "./MinutesPanel";
 import { MeetingPlayer } from "./MeetingPlayer";
+import { AskMeetingPanel } from "./AskMeetingPanel";
 import {
   HistoryDialog,
   Modal,
@@ -50,6 +51,7 @@ export default function MeetingApp() {
   const [search, setSearch] = useState("");
   const [librarySearch, setLibrarySearch] = useState("");
   const [llmEnabled, setLlmEnabled] = useState(false);
+  const [askEnabled, setAskEnabled] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loop, setLoop] = useState(false);
   const [dialog, setDialog] = useState<
@@ -69,8 +71,11 @@ export default function MeetingApp() {
     request<Job[]>("/api/jobs")
       .then(setJobs)
       .catch(() => setError("Chưa kết nối được dịch vụ xử lý."));
-    request<{ llm_enabled: boolean }>("/api/health")
-      .then((health) => setLlmEnabled(health.llm_enabled))
+    request<{ llm_enabled: boolean; ask_enabled?: boolean }>("/api/health")
+      .then((health) => {
+        setLlmEnabled(health.llm_enabled);
+        setAskEnabled(health.ask_enabled ?? health.llm_enabled);
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -726,6 +731,7 @@ export default function MeetingApp() {
                       ["transcript", "Transcript", "note"],
                       ["timeline", "Timeline", "timeline"],
                       ["summary", "Tóm tắt & công việc", "check"],
+                      ["ask", "Hỏi đáp", "chat"],
                     ].map(([key, label, icon]) => (
                       <button
                         key={key}
@@ -736,7 +742,7 @@ export default function MeetingApp() {
                         onClick={() => setTab(key)}
                       >
                         <Icon
-                          name={icon as "note" | "timeline" | "check"}
+                          name={icon as "note" | "timeline" | "check" | "chat"}
                           width="17"
                         />
                         {label}
@@ -751,199 +757,212 @@ export default function MeetingApp() {
                     Người nói
                   </button>
                 </div>
-                <div className={`review-grid tab-${tab}`}>
-                  <section
-                    className="transcript-panel"
-                    id={`panel-${tab === "summary" ? "transcript" : tab}`}
-                    aria-label={
-                      tab === "timeline"
-                        ? "Timeline người nói"
-                        : "Transcript cuộc họp"
-                    }
-                  >
-                    {tab === "timeline" ? (
-                      <>
-                        <div className="panel-heading">
-                          <div>
-                            <span className="eyebrow">AI NÓI, VÀO LÚC NÀO</span>
-                            <h2>Timeline người nói</h2>
-                          </div>
-                          <span className="subtle">
-                            {time(minutes.duration)}
-                          </span>
-                        </div>
-                        <div className="timeline-axis">
-                          <span>00:00</span>
-                          <span>{time(minutes.duration / 2)}</span>
-                          <span>{time(minutes.duration)}</span>
-                        </div>
-                        {speakers.map((id, i) => (
-                          <div className="timeline-row" key={id}>
-                            <span className={`speaker-avatar color-${i % 6}`}>
-                              {(view.speaker_names[id] || id)
-                                .slice(0, 1)
-                                .toUpperCase()}
+                {tab === "ask" ? (
+                  <AskMeetingPanel
+                    key={selected}
+                    jobId={selected}
+                    view={view}
+                    enabled={askEnabled}
+                    busy={!!busy}
+                    onSource={(turn) => seek(turn, true)}
+                  />
+                ) : (
+                  <div className={`review-grid tab-${tab}`}>
+                    <section
+                      className="transcript-panel"
+                      id={`panel-${tab === "summary" ? "transcript" : tab}`}
+                      aria-label={
+                        tab === "timeline"
+                          ? "Timeline người nói"
+                          : "Transcript cuộc họp"
+                      }
+                    >
+                      {tab === "timeline" ? (
+                        <>
+                          <div className="panel-heading">
+                            <div>
+                              <span className="eyebrow">
+                                AI NÓI, VÀO LÚC NÀO
+                              </span>
+                              <h2>Timeline người nói</h2>
+                            </div>
+                            <span className="subtle">
+                              {time(minutes.duration)}
                             </span>
-                            <strong>{view.speaker_names[id] || id}</strong>
-                            <div className="timeline-track">
-                              {allTurns
-                                .filter((t) => speakerId(t) === id)
-                                .map((turn) => (
-                                  <button
-                                    key={turn.turn_id}
-                                    className={`timeline-segment color-${i % 6} ${activeId === turn.turn_id ? "active" : ""}`}
-                                    style={{
-                                      left: `${(turn.start / Math.max(minutes.duration, 1)) * 100}%`,
-                                      width: `${Math.max(0.4, ((turn.end - turn.start) / Math.max(minutes.duration, 1)) * 100)}%`,
-                                    }}
-                                    aria-label={`${turn.speaker}, ${time(turn.start)}: ${turn.text}`}
-                                    title={`${time(turn.start)}–${time(turn.end)} · ${turn.text}`}
-                                    onClick={() => seek(turn)}
-                                  />
-                                ))}
-                            </div>
                           </div>
-                        ))}
-                        <p className="hint timeline-hint">
-                          Chọn một lượt để nghe. Các lượt chồng lấn có thể xuất
-                          hiện trên nhiều hàng.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="transcript-toolbar">
-                          <label className="search-field">
-                            <Icon name="search" width="16" />
-                            <input
-                              type="search"
-                              aria-label="Tìm trong transcript"
-                              placeholder="Tìm nội dung, người nói…"
-                              value={search}
-                              onChange={(e) => setSearch(e.target.value)}
-                            />
-                          </label>
-                          <button
-                            className={`filter-button ${onlyFlagged ? "active" : ""}`}
-                            aria-pressed={onlyFlagged}
-                            onClick={() => setOnlyFlagged(!onlyFlagged)}
-                          >
-                            <Icon name="flag" width="15" />
-                            Cần soát <span>{pendingTurns.length}</span>
-                          </button>
-                        </div>
-                        <div className="transcript-caption">
-                          <span>
-                            {turns.length} lượt nói
-                            {onlyFlagged
-                              ? " · ưu tiên theo độ tin cậy"
-                              : " · theo thời gian"}
-                          </span>
-                          <span>
-                            <kbd>N</kbd> đoạn cần soát tiếp
-                          </span>
-                        </div>
-                        <div className="turn-list">
-                          {turns.map((turn) => (
-                            <article
-                              key={turn.turn_id}
-                              ref={(node) => {
-                                if (node)
-                                  turnNodes.current.set(turn.turn_id, node);
-                                else turnNodes.current.delete(turn.turn_id);
-                              }}
-                              className={`turn ${turn.flagged && !turn.reviewed ? "flagged" : ""} ${activeId === turn.turn_id ? "selected" : ""}`}
-                              data-turn-id={turn.turn_id}
-                            >
-                              <div className="turn-meta">
-                                <span
-                                  className={`speaker-avatar color-${Math.max(0, speakers.indexOf(speakerId(turn))) % 6}`}
-                                >
-                                  {turn.speaker.slice(0, 1).toUpperCase()}
-                                </span>
-                                <strong>{turn.speaker}</strong>
-                                <button
-                                  className="turn-time"
-                                  onClick={() => seek(turn)}
-                                  aria-label={`Nghe lượt ${time(turn.start)}`}
-                                >
-                                  {time(turn.start)}–{time(turn.end)}
-                                </button>
-                                {turn.reviewed ? (
-                                  <span className="badge success review-label">
-                                    ✓ Đã soát
-                                  </span>
-                                ) : turn.flagged ? (
-                                  <span className="badge warning review-label">
-                                    Cần soát
-                                  </span>
-                                ) : null}
-                                <button
-                                  className="icon-button turn-play"
-                                  onClick={() => seek(turn)}
-                                  aria-label={`Phát lượt ${time(turn.start)}`}
-                                >
-                                  <Icon name="play" width="15" />
-                                </button>
+                          <div className="timeline-axis">
+                            <span>00:00</span>
+                            <span>{time(minutes.duration / 2)}</span>
+                            <span>{time(minutes.duration)}</span>
+                          </div>
+                          {speakers.map((id, i) => (
+                            <div className="timeline-row" key={id}>
+                              <span className={`speaker-avatar color-${i % 6}`}>
+                                {(view.speaker_names[id] || id)
+                                  .slice(0, 1)
+                                  .toUpperCase()}
+                              </span>
+                              <strong>{view.speaker_names[id] || id}</strong>
+                              <div className="timeline-track">
+                                {allTurns
+                                  .filter((t) => speakerId(t) === id)
+                                  .map((turn) => (
+                                    <button
+                                      key={turn.turn_id}
+                                      className={`timeline-segment color-${i % 6} ${activeId === turn.turn_id ? "active" : ""}`}
+                                      style={{
+                                        left: `${(turn.start / Math.max(minutes.duration, 1)) * 100}%`,
+                                        width: `${Math.max(0.4, ((turn.end - turn.start) / Math.max(minutes.duration, 1)) * 100)}%`,
+                                      }}
+                                      aria-label={`${turn.speaker}, ${time(turn.start)}: ${turn.text}`}
+                                      title={`${time(turn.start)}–${time(turn.end)} · ${turn.text}`}
+                                      onClick={() => seek(turn)}
+                                    />
+                                  ))}
                               </div>
-                              <p className="turn-text">
-                                {turn.text || (
-                                  <span className="subtle">
-                                    Không có lời phiên âm.
-                                  </span>
-                                )}
-                              </p>
-                              {turn.flagged && !turn.reviewed && (
-                                <p className="flag-reasons">
-                                  <Icon name="alert" width="13" />
-                                  {turn.flag_reasons.join(" · ") ||
-                                    "Cần nghe lại để xác nhận nội dung và người nói"}
-                                </p>
-                              )}
-                              <TurnEditor
-                                jobId={selected}
-                                view={view}
-                                turn={turn}
-                                onView={onView}
-                                onError={setError}
-                              />
-                            </article>
-                          ))}
-                          {!turns.length && (
-                            <div className="panel-empty">
-                              <Icon
-                                name={onlyFlagged ? "check" : "search"}
-                                width="28"
-                                height="28"
-                              />
-                              <h3>
-                                {onlyFlagged && !search
-                                  ? "Đã soát hết các đoạn được gắn cờ"
-                                  : "Không tìm thấy lượt nói"}
-                              </h3>
-                              <p>
-                                {onlyFlagged
-                                  ? "Bạn vẫn có thể kiểm tra các lượt còn lại trong transcript."
-                                  : "Thử từ khóa khác hoặc bỏ bộ lọc."}
-                              </p>
                             </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </section>
-                  <div className="minutes-column" id="panel-summary">
-                    <MinutesPanel
-                      key={selected}
-                      jobId={selected}
-                      view={view}
-                      enabled={llmEnabled}
-                      busy={!!busy}
-                      onSource={(turn) => seek(turn, true)}
-                      onQueued={onQueued}
-                      onError={setError}
-                    />
+                          ))}
+                          <p className="hint timeline-hint">
+                            Chọn một lượt để nghe. Các lượt chồng lấn có thể
+                            xuất hiện trên nhiều hàng.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="transcript-toolbar">
+                            <label className="search-field">
+                              <Icon name="search" width="16" />
+                              <input
+                                type="search"
+                                aria-label="Tìm trong transcript"
+                                placeholder="Tìm nội dung, người nói…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                              />
+                            </label>
+                            <button
+                              className={`filter-button ${onlyFlagged ? "active" : ""}`}
+                              aria-pressed={onlyFlagged}
+                              onClick={() => setOnlyFlagged(!onlyFlagged)}
+                            >
+                              <Icon name="flag" width="15" />
+                              Cần soát <span>{pendingTurns.length}</span>
+                            </button>
+                          </div>
+                          <div className="transcript-caption">
+                            <span>
+                              {turns.length} lượt nói
+                              {onlyFlagged
+                                ? " · ưu tiên theo độ tin cậy"
+                                : " · theo thời gian"}
+                            </span>
+                            <span>
+                              <kbd>N</kbd> đoạn cần soát tiếp
+                            </span>
+                          </div>
+                          <div className="turn-list">
+                            {turns.map((turn) => (
+                              <article
+                                key={turn.turn_id}
+                                ref={(node) => {
+                                  if (node)
+                                    turnNodes.current.set(turn.turn_id, node);
+                                  else turnNodes.current.delete(turn.turn_id);
+                                }}
+                                className={`turn ${turn.flagged && !turn.reviewed ? "flagged" : ""} ${activeId === turn.turn_id ? "selected" : ""}`}
+                                data-turn-id={turn.turn_id}
+                              >
+                                <div className="turn-meta">
+                                  <span
+                                    className={`speaker-avatar color-${Math.max(0, speakers.indexOf(speakerId(turn))) % 6}`}
+                                  >
+                                    {turn.speaker.slice(0, 1).toUpperCase()}
+                                  </span>
+                                  <strong>{turn.speaker}</strong>
+                                  <button
+                                    className="turn-time"
+                                    onClick={() => seek(turn)}
+                                    aria-label={`Nghe lượt ${time(turn.start)}`}
+                                  >
+                                    {time(turn.start)}–{time(turn.end)}
+                                  </button>
+                                  {turn.reviewed ? (
+                                    <span className="badge success review-label">
+                                      ✓ Đã soát
+                                    </span>
+                                  ) : turn.flagged ? (
+                                    <span className="badge warning review-label">
+                                      Cần soát
+                                    </span>
+                                  ) : null}
+                                  <button
+                                    className="icon-button turn-play"
+                                    onClick={() => seek(turn)}
+                                    aria-label={`Phát lượt ${time(turn.start)}`}
+                                  >
+                                    <Icon name="play" width="15" />
+                                  </button>
+                                </div>
+                                <p className="turn-text">
+                                  {turn.text || (
+                                    <span className="subtle">
+                                      Không có lời phiên âm.
+                                    </span>
+                                  )}
+                                </p>
+                                {turn.flagged && !turn.reviewed && (
+                                  <p className="flag-reasons">
+                                    <Icon name="alert" width="13" />
+                                    {turn.flag_reasons.join(" · ") ||
+                                      "Cần nghe lại để xác nhận nội dung và người nói"}
+                                  </p>
+                                )}
+                                <TurnEditor
+                                  jobId={selected}
+                                  view={view}
+                                  turn={turn}
+                                  onView={onView}
+                                  onError={setError}
+                                />
+                              </article>
+                            ))}
+                            {!turns.length && (
+                              <div className="panel-empty">
+                                <Icon
+                                  name={onlyFlagged ? "check" : "search"}
+                                  width="28"
+                                  height="28"
+                                />
+                                <h3>
+                                  {onlyFlagged && !search
+                                    ? "Đã soát hết các đoạn được gắn cờ"
+                                    : "Không tìm thấy lượt nói"}
+                                </h3>
+                                <p>
+                                  {onlyFlagged
+                                    ? "Bạn vẫn có thể kiểm tra các lượt còn lại trong transcript."
+                                    : "Thử từ khóa khác hoặc bỏ bộ lọc."}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </section>
+                    <div className="minutes-column" id="panel-summary">
+                      <MinutesPanel
+                        key={selected}
+                        jobId={selected}
+                        view={view}
+                        enabled={llmEnabled}
+                        busy={!!busy}
+                        onSource={(turn) => seek(turn, true)}
+                        onQueued={onQueued}
+                        onError={setError}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </div>
