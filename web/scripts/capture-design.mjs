@@ -302,9 +302,67 @@ try {
   await mobile.getByRole("button", { name: "Người nói", exact: true }).click();
   await capture(mobile, "17-mobile-speaker-management");
   await mobile.close();
+  const { page: askPage } = await fresh(1440);
+  await openMeeting(askPage);
+  await askPage.getByRole("tab", { name: "Hỏi đáp", exact: true }).click();
+  await expect(askPage.getByText("Bạn muốn tìm lại điều gì?")).toBeVisible();
+  await capture(askPage, "18-desktop-askmeeting-empty");
+  await askPage.getByLabel("Câu hỏi của bạn").fill("Ai nhận phần kiểm thử?");
+  await askPage
+    .getByRole("button", { name: "Gửi câu hỏi", exact: true })
+    .click();
+  await expect(askPage.locator(".ask-answer")).toHaveCount(1);
+  await capture(askPage, "19-desktop-askmeeting-cited-answer");
+  await askPage.getByLabel("Câu hỏi của bạn").fill("Ngân sách là bao nhiêu?");
+  await askPage
+    .getByRole("button", { name: "Gửi câu hỏi", exact: true })
+    .click();
+  await expect(askPage.locator(".ask-answer")).toHaveCount(2);
+  await capture(askPage, "20-desktop-askmeeting-no-answer");
+  await askPage.getByRole("tab", { name: "Transcript", exact: true }).click();
+  const askTurn = askPage.locator('.turn[data-turn-id="1"]');
+  await askTurn
+    .getByRole("button", { name: "Sửa & xác nhận", exact: true })
+    .click();
+  await askTurn
+    .getByLabel("Chỉnh sửa nội dung lượt nói")
+    .fill("An nhận phần kiểm thử vào thứ Sáu.");
+  await askTurn
+    .getByLabel("Chỉnh sửa nội dung lượt nói")
+    .press("Control+Enter");
+  await expect(askTurn.locator(".review-label")).toHaveText("✓ Đã soát");
+  await askPage.getByRole("tab", { name: "Hỏi đáp", exact: true }).click();
+  await expect(
+    askPage.getByText("Transcript đã thay đổi").first(),
+  ).toBeVisible();
+  await capture(askPage, "21-desktop-askmeeting-stale-answer");
+  await askPage.close();
+  const { page: askMobile } = await fresh(390);
+  await openMeeting(askMobile);
+  await askMobile.getByRole("tab", { name: "Hỏi đáp", exact: true }).click();
+  await capture(askMobile, "22-mobile-askmeeting-composer");
+  await askMobile.getByLabel("Câu hỏi của bạn").fill("Ai nhận kiểm thử?");
+  await askMobile
+    .getByRole("button", { name: "Gửi câu hỏi", exact: true })
+    .click();
+  await expect(askMobile.locator(".ask-answer")).toHaveCount(1);
+  // A taller mobile frame shows the complete composer, answer and fixed player.
+  await askMobile.setViewportSize({ width: 390, height: 1600 });
+  await capture(askMobile, "23-mobile-askmeeting-cited-answer");
+  await askMobile.close();
   if (errors.length) throw new Error(JSON.stringify(errors));
   const html = `<!doctype html><html lang="vi"><head><meta charset="UTF-8"><title>Meeting Notes — Complete UI</title><style>button{border:0}body{margin:0;background:#e8edf4;font-family:Arial,Helvetica,sans-serif}*{box-sizing:border-box}.design-screen{display:block}dialog[open]{display:block}svg{flex-shrink:0}summary{list-style:none}</style></head><body>${screens.map((s) => s.html).join("\n")}</body></html>`;
   await writeFile(path.join(output, "figma-screens.html"), html);
+  await writeFile(
+    path.join(output, "figma-ask-screens.html"),
+    html.replace(
+      screens.map((s) => s.html).join("\n"),
+      screens
+        .filter((s) => s.name.includes("askmeeting"))
+        .map((s) => s.html)
+        .join("\n"),
+    ),
+  );
   await writeFile(
     path.join(output, "screens.json"),
     JSON.stringify(

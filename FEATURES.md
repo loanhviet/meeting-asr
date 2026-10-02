@@ -1,6 +1,6 @@
 # Biên bản có dẫn chứng và soát transcript
 
-Thiết kế toàn bộ giao diện, bao gồm cả luồng cũ và mới: [Figma và danh sách 17 màn hình](web/design/README.md).
+Thiết kế toàn bộ giao diện, bao gồm cả luồng cũ và mới: [Figma và danh sách 23 màn hình](web/design/README.md).
 
 ## Biên bản có dẫn chứng
 
@@ -33,6 +33,10 @@ LLM vẫn cần cấu hình provider/model/key và `llm.enabled`, theo [TESTING.
 | Ctrl/⌘ + Enter trong editor | Lưu và đánh dấu đã soát    |
 
 Phím tắt phát audio không chạy khi đang nhập liệu, dùng nút/link hoặc mở dialog.
+
+## Hỏi đáp trong cuộc họp
+
+Tab Hỏi đáp đã có câu trả lời kèm nguồn transcript/audio, lịch sử lưu bền vững, cập nhật theo revision và phản hồi khi thiếu bằng chứng. Xem [AskMeeting và bộ audio nghiệm thu tổng hợp](ASKMEETING.md).
 
 ## API bổ sung
 
