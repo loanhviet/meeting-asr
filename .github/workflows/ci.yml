@@ -37,3 +37,14 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p data results .cache "$HOME/.cache/huggingface"
+      - run: docker compose config --quiet && docker compose -f compose.yaml -f compose.gpu.yaml config --quiet
+      - run: DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose up --build -d --wait
+      - run: curl --fail http://127.0.0.1:3000/api/health && curl --fail --output /dev/null http://127.0.0.1:3000/
+      - run: docker compose exec -T api meeting-asr doctor
+      - if: always()
+        run: docker compose logs --tail=50 && docker compose down

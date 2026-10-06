@@ -1,5 +1,7 @@
 # Chạy và nghiệm thu
 
+Trạng thái ngày 06/10/2026: [RELEASE_STATUS.md](RELEASE_STATUS.md). Các bước mới cho nhãn speech/ngữ cảnh ASR, cổng dữ liệu và nghiệm thu LLM/họp thật nằm trong [ACCEPTANCE.md](ACCEPTANCE.md); tài liệu này giữ các lệnh setup và kiểm tra luồng nền tảng.
+
 ## 1. Môi trường local
 
 ```bash
@@ -111,7 +113,7 @@ Adapter `http` dùng Chat Completions và JSON mode theo [tài liệu Structured
 
 ## 4. Dữ liệu và nghiên cứu
 
-Chưa có corpus thật trong repo. Cần chuẩn bị clip mono PCM16 16 kHz cùng manifest `{"clips": [...]}`. Mỗi clip có `clip_id`, `speaker` (ID người gốc), `text`, `source`, `license`, `wav`. Giữ nguồn/licensing của dữ liệu công khai. Các clip một người phải dùng cùng ID; speaker IDs không được chứa khoảng trắng.
+Dữ liệu không được commit vào repo. Cần chuẩn bị clip mono PCM16 16 kHz cùng manifest `{"clips": [...]}`. Mỗi clip có `clip_id`, `speaker` (ID người gốc), `text`, `source`, `license`, `wav`. Giữ nguồn/licensing của dữ liệu công khai. Các clip một người phải dùng cùng ID; speaker IDs không được chứa khoảng trắng.
 
 ```bash
 uv run --no-sync meeting-asr prepare-data data/raw/clips.json --out data/audited --dev-speakers 3

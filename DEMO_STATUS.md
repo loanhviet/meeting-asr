@@ -1,5 +1,7 @@
 # Kết quả kiểm tra local — 2026-09-26
 
+Đây là snapshot lịch sử. Trạng thái mới nhất, gồm nghiệm thu LLM thật và Docker CPU, xem [RELEASE_STATUS.md](RELEASE_STATUS.md).
+
 ## Đã xác nhận
 
 - Quyền đọc cả `pyannote/speaker-diarization-3.1` và `pyannote/segmentation-3.0`.
