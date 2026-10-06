@@ -1,0 +1,71 @@
+seed: 42
+runtime:
+  device: auto
+preprocess:
+  target_sr: 16000
+  normalize: true
+  denoise: false
+  max_duration_sec: 1800
+diarization:
+  backend: ecapa
+  model_name: pyannote/speaker-diarization-3.1
+  min_speakers: null
+  max_speakers: 6
+  min_segment_duration: 0.3
+  ecapa:
+    vad_threshold: 0.5
+    window_size: 1.5
+    hop_size: 0.75
+    cluster_threshold: 0.7
+    overlap_detector: pyannote/segmentation-3.0
+    clean_clustering: false
+asr:
+  model_name: vinai/PhoWhisper-medium
+  language: vi
+  batch_size: 1
+  max_segment_sec: 28.0
+  min_segment_sec: 0.3
+  boundary_pad: 0.1
+  temperature: 0.0
+  masking: none
+  collect_no_speech: false
+  merge_same_speaker_gap: 0.3
+postprocess:
+  merge_gap: 0.8
+  remove_fillers: false
+confidence:
+  variant: full
+  target_coverage: 0.2
+  margin_ref_percentile: 90
+  margin_ref: null
+  calibration_file: null
+  weights:
+    asr: 0.3
+    speech: 0.1
+    rep: 0.1
+    ovl: 0.25
+    spk: 0.15
+    dur: 0.1
+llm:
+  enabled: false
+  provider: null
+  model: null
+  base_url: null
+  api_key_env: MEETING_LLM_API_KEY
+  timeout_sec: 90
+  max_input_chars: 12000
+evaluation:
+  der_collar:
+  - 0.25
+  - 0.0
+  skip_overlap:
+  - true
+  - false
+  turn_wer_threshold:
+  - 0.2
+  - 0.3
+  - 0.5
+paths:
+  data_dir: ./data
+  results_dir: ./results
+  cache_dir: ./.cache

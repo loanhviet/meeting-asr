@@ -74,6 +74,7 @@ class PyannoteBackend:
         min_speakers=None,
         max_speakers=6,
         min_segment_duration=0.3,
+        clustering_threshold=None,
         **unused,
     ) -> DiarizationResult:
         try:
@@ -90,6 +91,10 @@ class PyannoteBackend:
                 "Cannot load pyannote. Accept diarization and segmentation model conditions "
                 "on Hugging Face, then configure HF_TOKEN."
             )
+        if clustering_threshold is not None:
+            parameters = pipeline.parameters(instantiated=True)
+            parameters["clustering"]["threshold"] = float(clustering_threshold)
+            pipeline.instantiate(parameters)
         pipeline.to(torch.device(resolve_device(self.device)))
         options = {
             k: v

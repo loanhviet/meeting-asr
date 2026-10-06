@@ -54,6 +54,106 @@ def cluster_embeddings(embeddings, threshold=0.7, min_speakers=None, max_speaker
     return labels, margins
 
 
+def cluster_clean_embeddings(
+    embeddings,
+    windows,
+    regions,
+    threshold=0.7,
+    min_speakers=None,
+    max_speakers=6,
+    min_clean_duration=0.75,
+):
+    """Fit speaker clusters on reliable windows, then assign all other windows.
+
+    Short windows and predicted overlap mixtures can form spurious speakers.
+    They still receive a label and remain available to ASR. No reference labels
+    or known speaker count are used.
+    """
+    matrix = np.asarray(embeddings, dtype=np.float64)
+    clean = [
+        i
+        for i, w in enumerate(windows)
+        if w.end - w.start >= min_clean_duration
+        and all(w.end <= a or w.start >= b for a, b in regions)
+    ]
+    if matrix.ndim != 2 or len(matrix) != len(windows) or not np.isfinite(matrix).all():
+        raise ValueError("embeddings must be finite and align with windows")
+    if len(clean) < 2:
+        return cluster_embeddings(matrix, threshold, min_speakers, max_speakers)
+    clean_labels, _ = cluster_embeddings(matrix[clean], threshold, min_speakers, max_speakers)
+    normalized = matrix / np.maximum(np.linalg.norm(matrix, axis=1, keepdims=True), 1e-12)
+    centroids = np.stack(
+        [
+            normalized[np.array(clean)[clean_labels == label]].mean(axis=0)
+            for label in sorted(set(clean_labels))
+        ]
+    )
+    centroids /= np.maximum(np.linalg.norm(centroids, axis=1, keepdims=True), 1e-12)
+    distances = 1 - normalized @ centroids.T
+    labels = distances.argmin(axis=1)
+    # Keep the cluster fit's assignments for the clean windows.
+    labels[clean] = clean_labels
+    margins = []
+    for row, label in zip(distances, labels, strict=True):
+        other = np.delete(row, label)
+        margins.append(max(0.0, float(other.min() - row[label])) if len(other) else None)
+    return labels, margins
+
+
+def diarization_from_features(
+    windows,
+    vectors,
+    regions,
+    *,
+    cluster_threshold=0.7,
+    clean_clustering=False,
+    min_speakers=None,
+    max_speakers=6,
+    min_segment_duration=0.3,
+):
+    """Reconstruct diarization without rerunning pretrained models."""
+    if not windows:
+        return DiarizationResult([], [], "ecapa+overlap")
+    if clean_clustering:
+        labels, margins = cluster_clean_embeddings(
+            vectors, windows, regions, cluster_threshold, min_speakers, max_speakers
+        )
+    else:
+        labels, margins = cluster_embeddings(vectors, cluster_threshold, min_speakers, max_speakers)
+    pieces = []
+    for index, window in enumerate(windows):
+        start, end = window.start, window.end
+        if index and windows[index - 1].region == window.region:
+            start = (windows[index - 1].start + windows[index - 1].end + start + end) / 4
+        if index + 1 < len(windows) and windows[index + 1].region == window.region:
+            other = windows[index + 1]
+            end = (window.start + window.end + other.start + other.end) / 4
+        segment = Segment(start, end, f"SPEAKER_{labels[index]:02d}")
+        if (
+            pieces
+            and pieces[-1][0].speaker == segment.speaker
+            and abs(pieces[-1][0].end - segment.start) < 1e-6
+        ):
+            previous, values = pieces[-1]
+            previous.end = segment.end
+            values.append(margins[index])
+        else:
+            pieces.append((segment, [margins[index]]))
+    base = [segment for segment, _ in pieces]
+    _, extras = assign_overlaps(base, windows, labels, margins, regions)
+    pieces.extend((s, [m]) for s, m in extras)
+    pieces = sorted(
+        [(s, values) for s, values in pieces if s.duration >= min_segment_duration],
+        key=lambda item: (item[0].start, item[0].end, item[0].speaker),
+    )
+    segments = [s for s, _ in pieces]
+    signals = []
+    for (_, values), ratio in zip(pieces, utterance_overlap_fractions(segments), strict=True):
+        valid = [v for v in values if v is not None]
+        signals.append(DiarSignals(ratio, float(np.mean(valid)) if valid else None, len(values)))
+    return DiarizationResult(segments, signals, "ecapa+overlap", regions)
+
+
 def assign_overlaps(segments, windows, labels, margins, regions, max_anchor_distance=10.0):
     """Add the closest different speaker supported outside each overlap region.
 
@@ -104,16 +204,31 @@ class EcapaBackend:
         hop_size=0.75,
         cluster_threshold=0.7,
         overlap_detector="pyannote/segmentation-3.0",
+        clean_clustering=False,
     ):
         if not 0 < hop_size <= window_size or not 0 < vad_threshold < 1:
             raise ValueError("invalid ECAPA window or VAD options")
         self.device, self.vad_threshold = device, vad_threshold
         self.window_size, self.hop_size = window_size, hop_size
         self.cluster_threshold, self.overlap_detector = cluster_threshold, overlap_detector
+        self.clean_clustering = clean_clustering
 
     def diarize(
         self, audio, *, min_speakers=None, max_speakers=6, min_segment_duration=0.3, **unused
     ):
+        windows, vectors, regions = self.extract_features(audio, min_segment_duration)
+        return diarization_from_features(
+            windows,
+            vectors,
+            regions,
+            cluster_threshold=self.cluster_threshold,
+            clean_clustering=self.clean_clustering,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            min_segment_duration=min_segment_duration,
+        )
+
+    def extract_features(self, audio, min_segment_duration=0.3):
         try:
             import torch
             from pyannote.audio import Model
@@ -149,7 +264,7 @@ class EcapaBackend:
                     break
                 start += self.hop_size
         if not windows:
-            return DiarizationResult([], [], "ecapa+overlap")
+            return [], np.empty((0, 0)), []
         encoder = EncoderClassifier.from_hparams(
             source="speechbrain/spkrec-ecapa-voxceleb",
             run_opts={"device": device},
@@ -165,28 +280,6 @@ class EcapaBackend:
         finally:
             del encoder
             release_gpu()
-        labels, margins = cluster_embeddings(
-            vectors, self.cluster_threshold, min_speakers, max_speakers
-        )
-        pieces = []
-        for index, window in enumerate(windows):
-            start, end = window.start, window.end
-            if index and windows[index - 1].region == window.region:
-                start = (windows[index - 1].start + windows[index - 1].end + start + end) / 4
-            if index + 1 < len(windows) and windows[index + 1].region == window.region:
-                other = windows[index + 1]
-                end = (window.start + window.end + other.start + other.end) / 4
-            segment = Segment(start, end, f"SPEAKER_{labels[index]:02d}")
-            if (
-                pieces
-                and pieces[-1][0].speaker == segment.speaker
-                and (abs(pieces[-1][0].end - segment.start) < 1e-6)
-            ):
-                previous, values = pieces[-1]
-                previous.end = segment.end
-                values.append(margins[index])
-            else:
-                pieces.append((segment, [margins[index]]))
         with pyannote_checkpoint_context():
             model = Model.from_pretrained(
                 self.overlap_detector, use_auth_token=os.getenv("HF_TOKEN")
@@ -205,19 +298,4 @@ class EcapaBackend:
         finally:
             del detector, model
             release_gpu()
-        base = [segment for segment, _ in pieces]
-        _, extras = assign_overlaps(base, windows, labels, margins, regions)
-        pieces.extend((s, [m]) for s, m in extras)
-        pieces = sorted(
-            [(s, values) for s, values in pieces if s.duration >= min_segment_duration],
-            key=lambda item: (item[0].start, item[0].end, item[0].speaker),
-        )
-        segments = [s for s, _ in pieces]
-        ratios = utterance_overlap_fractions(segments)
-        signals = []
-        for (_, values), ratio in zip(pieces, ratios, strict=True):
-            valid = [v for v in values if v is not None]
-            signals.append(
-                DiarSignals(ratio, float(np.mean(valid)) if valid else None, len(values))
-            )
-        return DiarizationResult(segments, signals, "ecapa+overlap", regions)
+        return windows, np.asarray(vectors), regions

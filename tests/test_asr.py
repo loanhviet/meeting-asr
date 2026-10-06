@@ -1,7 +1,13 @@
 import numpy as np
 import pytest
 
-from meeting_asr.asr import Decoded, chunk_ranges, no_speech_probability, transcribe
+from meeting_asr.asr import (
+    Decoded,
+    chunk_ranges,
+    merge_asr_context,
+    no_speech_probability,
+    transcribe,
+)
 from meeting_asr.diarization import DiarizationResult
 from meeting_asr.models import AudioBundle, DiarSignals, Segment
 
@@ -69,3 +75,32 @@ def test_no_speech_probability_and_rejected_masking():
     assert result[0].asr.no_speech_prob == pytest.approx(0.25)
     with pytest.raises(ValueError, match="masking"):
         transcribe(audio, diar, masking="input_masking", decoder=Decoder())
+
+
+def test_asr_recovers_short_fragments_without_changing_diarization():
+    audio = AudioBundle(np.full(16000 * 2, 0.2, dtype=np.float32), 16000, 16000, "fixture")
+    diar = DiarizationResult(
+        [Segment(0, 0.2, "A"), Segment(0.3, 0.9, "A")],
+        [DiarSignals(0, 0.4, 1), DiarSignals(0, 0.8, 2)],
+        "fixture",
+    )
+
+    class Decoder:
+        def decode(self, waves, sr):
+            assert len(waves) == 1
+            return [Decoded("xin chào")]
+
+    utterances = transcribe(audio, diar, merge_same_speaker_gap=0.2, decoder=Decoder())
+    assert len(utterances) == 1
+    assert (utterances[0].start, utterances[0].end) == (0, 0.9)
+    assert utterances[0].diar.n_windows == 3
+    assert len(diar.segments) == 2
+
+
+def test_asr_merge_does_not_join_across_an_active_other_speaker():
+    diar = DiarizationResult(
+        [Segment(0, 2, "B"), Segment(0.5, 1, "A"), Segment(1.1, 1.5, "A")],
+        [DiarSignals(0.5), DiarSignals(1), DiarSignals(1)],
+        "fixture",
+    )
+    assert len(merge_asr_context(diar, 0.3).segments) == 3
