@@ -51,6 +51,7 @@ def test_provider_request_and_response_protocol(provider, monkeypatch):
     def open_request(request, timeout):
         payload = json.loads(request.data)
         assert payload["model"] == "fixture"
+        assert payload["max_tokens"] == 1800
         assert payload["messages"][0]["content"] == "JSON prompt"
         if provider == "http":
             assert request.full_url.endswith("/chat/completions")
@@ -69,6 +70,19 @@ def test_provider_request_and_response_protocol(provider, monkeypatch):
         )
         == expected
     )
+
+
+def test_provider_timeout_is_sanitized_and_output_limit_is_configurable(monkeypatch):
+    def timeout(request, timeout):
+        assert json.loads(request.data)["max_tokens"] == 500
+        raise TimeoutError("private request information")
+
+    monkeypatch.setattr("meeting_asr.summarize.urlopen", timeout)
+    with pytest.raises(RuntimeError, match="endpoint is unreachable") as exc:
+        HTTPProvider(
+            "http", "https://example.invalid/v1", "secret", max_output_tokens=500
+        ).complete("private transcript", "fixture")
+    assert "private" not in str(exc.value)
 
 
 def grounded(ids, task="gửi báo cáo"):

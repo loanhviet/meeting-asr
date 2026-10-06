@@ -111,13 +111,22 @@ def resolve_evidence(payload: dict, turns) -> dict:
 
 
 class HTTPProvider:
-    def __init__(self, provider: str, base_url: str, api_key: str | None, timeout=90):
+    def __init__(
+        self, provider: str, base_url: str, api_key: str | None, timeout=90, max_output_tokens=1800
+    ):
+        if (
+            isinstance(max_output_tokens, bool)
+            or not isinstance(max_output_tokens, int)
+            or max_output_tokens < 1
+        ):
+            raise ValueError("max_output_tokens must be a positive integer")
         self.provider, self.base_url, self.api_key, self.timeout = (
             provider,
             base_url,
             api_key,
             timeout,
         )
+        self.max_output_tokens = max_output_tokens
 
     def complete(self, prompt: str, model: str) -> str:
         if self.provider == "claude":
@@ -125,7 +134,7 @@ class HTTPProvider:
             headers = {"x-api-key": self.api_key or "", "anthropic-version": "2023-06-01"}
             payload = {
                 "model": model,
-                "max_tokens": 1800,
+                "max_tokens": self.max_output_tokens,
                 "messages": [{"role": "user", "content": prompt}],
             }
         else:
@@ -133,6 +142,7 @@ class HTTPProvider:
             headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
             payload = {
                 "model": model,
+                "max_tokens": self.max_output_tokens,
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
             }
@@ -146,7 +156,7 @@ class HTTPProvider:
         except HTTPError as exc:
             # Do not echo provider response bodies, which can contain private transcript data.
             raise RuntimeError(f"LLM request failed with HTTP {exc.code}") from exc
-        except URLError as exc:
+        except (URLError, TimeoutError, OSError) as exc:
             raise RuntimeError("LLM endpoint is unreachable") from exc
         if self.provider == "claude":
             return "".join(block["text"] for block in result["content"] if block["type"] == "text")
@@ -172,7 +182,13 @@ class Summarizer:
             key = os.getenv(key_env) if key_env else None
             if key_env and not key:
                 raise ValueError(f"configure the {key_env} environment variable")
-            provider = HTTPProvider(name, base_url, key, options.get("timeout_sec", 90))
+            provider = HTTPProvider(
+                name,
+                base_url,
+                key,
+                options.get("timeout_sec", 90),
+                options.get("max_output_tokens", 1800),
+            )
         self.provider = provider
         self.cache_dir = Path(cache_dir)
         self.identity = {
@@ -181,6 +197,7 @@ class Summarizer:
             "base_url": base_url,
             "prompt_version": 2,
             "template": options.get("template", "project"),
+            "max_output_tokens": options.get("max_output_tokens", 1800),
         }
 
     def _request(self, text, allowed_turn_ids):

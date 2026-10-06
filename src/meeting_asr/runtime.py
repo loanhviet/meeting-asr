@@ -37,13 +37,16 @@ def file_sha256(path: str | Path) -> str:
 
 
 def git_commit() -> str | None:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=PROJECT_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return None  # Runtime images and installed wheels need not contain Git.
     return result.stdout.strip() if result.returncode == 0 else None
 
 

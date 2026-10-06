@@ -105,6 +105,8 @@ def compose_demo(clips: list[Clip], name: str, *, overlap=False, snr_db=None, se
         snr_db,
         snr_db,
         "none" if snr_db is None else "seeded white noise",
+        segments,
+        "full_clip_unverified",
     )
 
 

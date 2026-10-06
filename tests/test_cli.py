@@ -13,6 +13,24 @@ from meeting_asr.cli import main
 from meeting_asr.settings import load_config
 
 
+def test_experiment_count_gate_stops_inference_without_requiring_manual_labels(monkeypatch, capsys):
+    def audit(*args, **kwargs):
+        assert kwargs["expected_conversations"] == 20
+        assert kwargs["require_verified_speech"] is False
+        return {"ready": False, "issues": ["expected 20 conversations, found 2"]}
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("inference must not start after a failed data gate")
+
+    monkeypatch.setattr("meeting_asr.evaluation.readiness.audit_experiments", audit)
+    monkeypatch.setattr("meeting_asr.cli.run_experiments", unexpected)
+    assert (
+        main(["experiments", "unused.json", "--out", "unused", "--expected-conversations", "20"])
+        == 2
+    )
+    assert "expected 20" in capsys.readouterr().err
+
+
 @pytest.mark.skipif(
     shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None,
     reason="FFmpeg and ffprobe are required",

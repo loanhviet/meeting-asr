@@ -22,6 +22,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.9,<1"]
 demo = ["edge-tts>=7.2,<8"]
+annotation = ["webrtcvad-wheels==2.0.14"]
 api = [
   "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "python-multipart>=0.0.18,<1",
   "httpx>=0.27,<1", "filelock>=3.15,<5", "reportlab>=4.2,<5",
@@ -44,6 +45,7 @@ packages = ["src/meeting_asr"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "configs/default.yaml" = "meeting_asr/configs/default.yaml"
+"configs/improved-ecapa.yaml" = "meeting_asr/configs/improved-ecapa.yaml"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -21,6 +21,13 @@ Mỗi ý trả lời phải được nguồn hỗ trợ trực tiếp, có ít n
 Phân biệt đề xuất với quyết định; ưu tiên lời đính chính mới nhất, trích cả đoạn
 đính chính nếu có. Không suy đoán owner, deadline hoặc thông tin còn thiếu.
 Nếu câu hỏi không có đáp án trong nguồn, trả status="not_found", answer_points=[].
+status="found" chỉ dùng khi nguồn trả lời trực tiếp ít nhất một phần câu hỏi.
+Một ý chỉ nói "chưa có thông tin", "không được nhắc tới", "chưa xác định" hoặc
+từ chối suy đoán KHÔNG là đáp án cho câu hỏi yêu cầu thông tin đang thiếu:
+khi mọi ý đều như vậy, trả not_found và mảng rỗng. Đừng dùng một lượt liên quan
+chủ đề làm bằng chứng cho dữ kiện không có trong lượt đó. Nếu người dùng hỏi
+chính trạng thái đã chốt/chưa chốt hoặc đã giao/chưa giao, lời xác nhận trạng
+thái rõ ràng trong nguồn có thể là đáp án found.
 Nếu chỉ trả lời được một phần, nêu rõ phần chưa được chốt trong ý có dẫn chứng.
 Đoạn flagged=true và reviewed=false cần uncertain=true. Không thêm markdown.
 """
@@ -153,7 +160,7 @@ class AskMeeting:
     def __init__(self, options: dict, cache_dir: str | Path, provider=None):
         adapter = Summarizer(options, cache_dir, provider=provider)
         self.provider, self.model = adapter.provider, adapter.model
-        self.identity = {**adapter.identity, "prompt_version": "ask-1"}
+        self.identity = {**adapter.identity, "prompt_version": "ask-2"}
         self.options = options
 
     def answer(self, question: str, turns: list[dict]) -> dict:

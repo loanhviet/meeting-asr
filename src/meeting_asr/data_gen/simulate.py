@@ -20,9 +20,11 @@ from typing import Any
 
 import numpy as np
 
+from meeting_asr.data_gen.annotations import validate_speech_labels
 from meeting_asr.evaluation.overlap import measure_overlap_ratio, utterance_overlap_fractions
 from meeting_asr.io import write_rttm, write_transcript_json
 from meeting_asr.models import ASRSignals, DiarSignals, Segment, TranscriptDocument, Utterance
+from meeting_asr.runtime import file_sha256
 from meeting_asr.settings import config_hash
 
 SAMPLE_RATE = 16000
@@ -63,6 +65,9 @@ class Clip:
     waveform: np.ndarray
     source: str
     sample_rate: int = SAMPLE_RATE
+    speech_intervals: tuple[tuple[float, float], ...] | None = None
+    speech_annotation: dict | None = None
+    audio_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if not self.clip_id or any(char.isspace() for char in self.clip_id):
@@ -85,6 +90,12 @@ class Clip:
         if float(np.max(np.abs(waveform))) < 1e-4:
             raise ValueError("clip is silent")
         self.waveform = waveform
+        if self.speech_intervals is not None:
+            self.speech_intervals = validate_speech_labels(
+                self.speech_intervals, self.speech_annotation, self.duration
+            )
+        elif self.speech_annotation is not None:
+            raise ValueError("speech_annotation requires speech_intervals")
 
     @property
     def duration(self) -> float:
@@ -105,6 +116,8 @@ class SimulatedSession:
     snr_db: float | None
     snr_actual_db: float | None
     noise_source: str
+    speech_segments: list[Segment]
+    reference_kind: str
 
     @property
     def duration(self) -> float:
@@ -222,24 +235,30 @@ def render_condition(
     _reject_consecutive(ordered)
     durations = [clip.duration for clip in ordered]
     rng = np.random.default_rng(_seed(seed, condition_index))
-    placed = _place(durations, overlap, rng)
+    labelled = [clip.speech_intervals is not None for clip in ordered]
+    if any(labelled) and not all(labelled):
+        raise ValueError("a conversation cannot mix labelled speech and full-clip references")
+    placed = (
+        _place_speech(ordered, overlap, rng) if all(labelled) else _place(durations, overlap, rng)
+    )
     segments = [
         Segment(start, end, clip.speaker)
         for clip, (start, end) in zip(ordered, placed, strict=True)
     ]
     speech, length = _render_speech(ordered, segments)
+    speech_segments = _project_speech(ordered, segments) if all(labelled) else segments
     source_name = "white" if noise is None else noise_source
     snr_actual: float | None = None
     if snr_db is None:
         mixture = speech
     else:
-        active = _active_mask(segments, length)
+        active = _active_mask(speech_segments, length)
         noise_wave = _noise_for_length(rng, length, noise)
         mixture = mix_at_snr(speech, noise_wave, snr_db, active)
         residual = mixture - speech
         snr_actual = _snr_db(speech, residual, active)
     waveform = peak_normalize(mixture)
-    actual = measure_overlap_ratio(segments)
+    actual = measure_overlap_ratio(speech_segments)
     if abs(actual - overlap) >= OVERLAP_TOLERANCE:
         raise ValueError(
             f"overlap {actual:.4f} is outside {OVERLAP_TOLERANCE} of target {overlap:.4f}"
@@ -259,6 +278,8 @@ def render_condition(
         snr_db=snr_db,
         snr_actual_db=snr_actual,
         noise_source=source_name,
+        speech_segments=speech_segments,
+        reference_kind="speech_intervals" if all(labelled) else "full_clip_unverified",
     )
 
 
@@ -274,6 +295,9 @@ def load_clips(manifest_path: str | Path) -> list[Clip]:
         if not wav_path.is_absolute():
             wav_path = path.parent / wav_path
         waveform, sample_rate = read_mono_wav(wav_path)
+        checksum = file_sha256(wav_path)
+        if entry.get("sha256", checksum) != checksum:
+            raise ValueError(f"audio checksum mismatch: {entry['clip_id']}")
         clips.append(
             Clip(
                 clip_id=str(entry["clip_id"]),
@@ -282,6 +306,9 @@ def load_clips(manifest_path: str | Path) -> list[Clip]:
                 waveform=waveform,
                 source=str(entry["source"]),
                 sample_rate=sample_rate,
+                speech_intervals=entry.get("speech_intervals"),
+                speech_annotation=entry.get("speech_annotation"),
+                audio_sha256=checksum,
             )
         )
     return clips
@@ -292,7 +319,8 @@ def write_session(directory: str | Path, session: SimulatedSession) -> Path:
     destination.mkdir(parents=True, exist_ok=True)
     wav_path = destination / f"{session.stem}.wav"
     write_mono_wav(wav_path, session.waveform, session.sample_rate)
-    write_rttm(destination / f"{session.stem}.rttm", session.stem, session.segments)
+    write_rttm(destination / f"{session.stem}.rttm", session.stem, session.speech_segments)
+    write_rttm(destination / f"{session.stem}.oracle.rttm", session.stem, session.segments)
     fractions = utterance_overlap_fractions(session.segments)
     utterances = [
         Utterance(
@@ -312,6 +340,11 @@ def write_session(directory: str | Path, session: SimulatedSession) -> Path:
         "snr_db": session.snr_db,
         "noise_source": session.noise_source,
         "clip_ids": [clip.clip_id for clip in session.clips],
+        "reference_kind": session.reference_kind,
+        "speech_labels": [
+            {"intervals": clip.speech_intervals, "annotation": clip.speech_annotation}
+            for clip in session.clips
+        ],
     }
     write_transcript_json(
         destination / f"{session.stem}.json",
@@ -327,6 +360,7 @@ def write_session(directory: str | Path, session: SimulatedSession) -> Path:
         **provenance,
         "stem": session.stem,
         "overlap_actual": session.overlap_actual,
+        "utterance_overlap_actual": measure_overlap_ratio(session.segments),
         "snr_actual_db": session.snr_actual_db,
         "sample_rate": session.sample_rate,
         "turns": [
@@ -337,6 +371,9 @@ def write_session(directory: str | Path, session: SimulatedSession) -> Path:
                 "text": clip.text,
                 "start": segment.start,
                 "end": segment.end,
+                "speech_intervals": clip.speech_intervals,
+                "speech_annotation": clip.speech_annotation,
+                "audio_sha256": clip.audio_sha256,
             }
             for clip, segment in zip(session.clips, session.segments, strict=True)
         ],
@@ -396,6 +433,96 @@ def _place(
         ends.append(start + durations[index])
     snapped = [_snap(start, end) for start, end in zip(starts, ends, strict=True)]
     return snapped
+
+
+def _project_speech(clips, segments):
+    return [
+        Segment(round(turn.start + start, 3), round(turn.start + end, 3), turn.speaker)
+        for clip, turn in zip(clips, segments, strict=True)
+        for start, end in clip.speech_intervals
+        if round(turn.start + end, 3) > round(turn.start + start, 3)
+    ]
+
+
+def _speech_intersection(left, right, overlap):
+    shift = left.duration - overlap
+    return sum(
+        max(0.0, min(b, shift + d) - max(a, shift + c))
+        for a, b in left.speech_intervals
+        for c, d in right.speech_intervals
+    )
+
+
+def _place_speech(clips, target, rng):
+    """Allocate actual speech overlap without cutting utterance audio.
+
+    Half-utterance caps keep three-way overlap impossible. Search each boundary's
+    continuous speech-intersection curve, including internal pauses. Infeasible
+    requests fail explicitly instead of silently changing the target.
+    """
+    if target == 0:
+        return _place([c.duration for c in clips], target, rng)
+    speech_time = sum(b - a for c in clips for a, b in c.speech_intervals)
+    budget = target / (1 + target) * speech_time
+    curves = {}
+    for i, (left, right) in enumerate(pairwise(clips)):
+        cap = _boundary_cap(left.duration, right.duration)
+        if cap < OVERLAP_FLOOR_SEC:
+            continue
+        xs = np.linspace(OVERLAP_FLOOR_SEC, cap, max(2, math.ceil(cap / 0.005)))
+        ys = np.array([_speech_intersection(left, right, x) for x in xs])
+        peak = int(ys.argmax())
+        if ys[peak] > 1e-9:
+            curves[i] = (xs[: peak + 1], ys[: peak + 1])
+    if sum(float(y[-1]) for _, y in curves.values()) < budget - 1e-6:
+        raise ValueError("speech overlap target is infeasible within half-utterance/1.5s limits")
+    chosen = None
+    orders = [list(curves) for _ in range(32)]
+    for order in orders:
+        rng.shuffle(order)
+    orders.append(sorted(curves, key=lambda i: curves[i][1][-1], reverse=True))
+    for order in orders:
+        selected, floor, capacity = [], 0.0, 0.0
+        for i in order:
+            _, ys = curves[i]
+            if floor + ys[0] > budget + 1e-9:
+                continue
+            selected.append(i)
+            floor += float(ys[0])
+            capacity += float(ys[-1])
+            if capacity >= budget - 1e-9:
+                chosen = selected
+                break
+        if chosen:
+            break
+    if chosen is None:
+        raise ValueError("speech overlap budget cannot fit minimum boundary overlap")
+    overlaps, remaining = {}, budget
+    for position, i in enumerate(chosen):
+        later = chosen[position + 1 :]
+        xs, ys = curves[i]
+        low = max(float(ys[0]), remaining - sum(float(curves[j][1][-1]) for j in later))
+        high = min(float(ys[-1]), remaining - sum(float(curves[j][1][0]) for j in later))
+        wanted = remaining if not later else float(rng.uniform(low, max(low, high)))
+        # Locate the first crossing; the full curve need not be monotonic.
+        crossings = np.flatnonzero(ys >= wanted - 1e-9)
+        k = int(crossings[0]) if len(crossings) else len(xs) - 1
+        a, b = (float(xs[k - 1]), float(xs[k])) if k else (float(xs[0]), float(xs[0]))
+        for _ in range(30):
+            midpoint = (a + b) / 2
+            if _speech_intersection(clips[i], clips[i + 1], midpoint) < wanted:
+                a = midpoint
+            else:
+                b = midpoint
+        overlaps[i] = (a + b) / 2
+        remaining -= wanted
+    placed = [(0.0, clips[0].duration)]
+    for i, clip in enumerate(clips[1:]):
+        start = (
+            placed[-1][1] - overlaps[i] if i in overlaps else placed[-1][1] + rng.uniform(*GAP_SEC)
+        )
+        placed.append((float(start), float(start + clip.duration)))
+    return [_snap(a, b) for a, b in placed]
 
 
 def _allocate_overlaps(

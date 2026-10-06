@@ -2,16 +2,31 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from meeting_asr.ask import retrieve
+
+
+def provider_provenance(answerer):
+    if answerer is None:
+        return None
+    identity = getattr(answerer, "identity", {})
+    result = {
+        k: identity.get(k) for k in ("provider", "model", "prompt_version", "max_output_tokens")
+    }
+    if identity.get("base_url"):
+        result["endpoint_sha256"] = hashlib.sha256(identity["base_url"].encode()).hexdigest()
+    return result
 
 
 def evaluate_questions(dataset, turns, answerer=None):
     rows = []
-    for case in dataset["questions"]:
+    for index, case in enumerate(dataset["questions"]):
         context = retrieve(case["question"], turns)
         retrieved_ids = {turn["turn_id"] for turn in context}
         expected_ids = set(case["source_turn_ids"])
         row = {
+            "case_id": case.get("id", f"q{index:03d}"),
             "question": case["question"],
             "expected_status": case["status"],
             "expected_answer": case["answer"],
@@ -43,6 +58,7 @@ def evaluate_questions(dataset, turns, answerer=None):
     return {
         "synthetic": bool(dataset.get("synthetic")),
         "mode": "retrieval-only" if answerer is None else "retrieval-and-provider",
+        "provider_identity": provider_provenance(answerer),
         "questions": len(rows),
         "answerable_questions": len(answerable),
         "unanswerable_questions": len(missing),
@@ -57,6 +73,11 @@ def evaluate_questions(dataset, turns, answerer=None):
         if answerer and missing
         else None,
         "semantic_accuracy": None,
-        "limitations": "Scripted synthetic data. ID validity/status checks do not measure semantic answer quality, ASR accuracy or real meeting performance.",
+        "limitations": (
+            "Scripted synthetic data. "
+            if dataset.get("synthetic")
+            else "Supplied meeting transcript. "
+        )
+        + "ID validity/status checks do not measure semantic answer quality or ASR accuracy; human review is required.",
         "cases": rows,
     }
