@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
+from meeting_asr.data_gen.annotations import validate_speech_labels
 from meeting_asr.data_gen.simulate import read_mono_wav
 from meeting_asr.io import _atomic_text
 from meeting_asr.runtime import file_sha256
@@ -50,6 +51,10 @@ def prepare_dataset(
         waveform, sr = read_mono_wav(wav)
         if not np.isfinite(waveform).all() or np.max(np.abs(waveform)) < 1e-4:
             raise ValueError(f"invalid or silent clip: {entry['clip_id']}")
+        if "speech_intervals" in entry:
+            validate_speech_labels(
+                entry["speech_intervals"], entry.get("speech_annotation"), len(waveform) / sr
+            )
         record = {
             **entry,
             "wav": str(wav),

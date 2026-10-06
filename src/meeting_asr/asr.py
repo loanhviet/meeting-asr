@@ -10,7 +10,7 @@ from typing import Protocol
 import numpy as np
 
 from meeting_asr.diarization import DiarizationResult, release_gpu, resolve_device
-from meeting_asr.models import ASRSignals, AudioBundle, Utterance
+from meeting_asr.models import ASRSignals, AudioBundle, DiarSignals, Segment, Utterance
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,67 @@ def chunk_ranges(audio: AudioBundle, start: float, end: float, maximum: float) -
         cursor = cut if silence else cut - 0.5
     chunks.append((cursor, end))
     return chunks
+
+
+def merge_asr_context(diarization: DiarizationResult, maximum_gap=0.0) -> DiarizationResult:
+    """Join nearby fragments of one speaker before decoding, retaining raw RTTM.
+
+    A different speaker active inside the gap prevents a join. This recovers
+    context lost when a diarizer splits a sentence at a short pause and avoids
+    decoding tiny fragments separately.
+    """
+    if maximum_gap < 0 or not np.isfinite(maximum_gap):
+        raise ValueError("ASR merge gap must be finite and nonnegative")
+    if maximum_gap == 0:
+        return diarization
+    ordered = sorted(
+        zip(diarization.segments, diarization.signals, strict=True),
+        key=lambda pair: (pair[0].start, pair[0].end, pair[0].speaker),
+    )
+    groups = []
+    for segment, signal in ordered:
+        previous = groups[-1][-1][0] if groups else None
+        gap = segment.start - previous.end if previous else None
+        intervening = previous and any(
+            other.speaker != segment.speaker
+            and other.start < segment.start
+            and other.end > previous.end
+            for other in diarization.segments
+        )
+        if (
+            previous
+            and previous.speaker == segment.speaker
+            and 0 <= gap <= maximum_gap
+            and not intervening
+        ):
+            groups[-1].append((segment, signal))
+        else:
+            groups.append([(segment, signal)])
+    segments, signals = [], []
+    for group in groups:
+        if len(group) == 1:
+            segments.append(group[0][0])
+            signals.append(group[0][1])
+            continue
+        segments.append(Segment(group[0][0].start, group[-1][0].end, group[0][0].speaker))
+        duration = sum(segment.duration for segment, _ in group)
+        margins = [
+            (signal.cluster_margin, segment.duration)
+            for segment, signal in group
+            if signal.cluster_margin is not None
+        ]
+        counts = [signal.n_windows for _, signal in group if signal.n_windows is not None]
+        signals.append(
+            DiarSignals(
+                sum(signal.overlap_ratio * segment.duration for segment, signal in group)
+                / duration,
+                sum(value * span for value, span in margins) / sum(span for _, span in margins)
+                if margins
+                else None,
+                sum(counts) if counts else None,
+            )
+        )
+    return DiarizationResult(segments, signals, diarization.backend, diarization.overlap_regions)
 
 
 class WhisperDecoder:
@@ -214,6 +275,7 @@ def transcribe(
     temperature=0.0,
     masking="none",
     collect_no_speech=False,
+    merge_same_speaker_gap=0.0,
     device="auto",
     decoder: Decoder | None = None,
 ) -> list[Utterance]:
@@ -221,6 +283,7 @@ def transcribe(
         raise ValueError("invalid ASR batch size or boundary padding")
     if masking != "none":
         raise ValueError("masking must be 'none' until the Input Masking comparison is implemented")
+    diarization = merge_asr_context(diarization, merge_same_speaker_gap)
     tasks = []
     valid = []
     for segment, signals in zip(diarization.segments, diarization.signals, strict=True):

@@ -1,0 +1,45 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: cpu
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HOME: /app/.cache
+      HF_HOME: /app/.cache/huggingface
+      TORCH_HOME: /app/.cache/torch
+      XDG_CACHE_HOME: /app/.cache/xdg
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./.cache:/app/.cache
+      - ${HF_CACHE_PATH:-~/.cache/huggingface}:/app/.cache/huggingface
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 30s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ""
+        MEETING_API_INTERNAL_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      MEETING_API_INTERNAL_URL: http://api:8000
+    ports:
+      - "${WEB_HOST:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    init: true
+    restart: unless-stopped

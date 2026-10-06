@@ -146,12 +146,28 @@ def _run_dataset(args):
         seed=args.seed,
         noise=args.noise,
         session_limit=args.session_limit,
+        require_verified_speech=args.require_verified_speech,
     )
     print(json.dumps({"sessions": len(payload["sessions"]), "out": args.out}))
     return 0
 
 
 def _run_experiments(args):
+    if (
+        args.require_verified_speech
+        or args.other_manifest
+        or args.expected_conversations is not None
+    ):
+        from meeting_asr.evaluation.readiness import audit_experiments
+
+        audit = audit_experiments(
+            args.manifest,
+            other_manifest=args.other_manifest,
+            expected_conversations=args.expected_conversations,
+            require_verified_speech=args.require_verified_speech,
+        )
+        if not audit["ready"]:
+            raise ValueError("experiment readiness failed: " + "; ".join(audit["issues"]))
     backends = ("pyannote", "ecapa") if args.backend == "all" else (args.backend,)
     rows = run_experiments(args.manifest, load_config(args.config), args.out, backends)
     print(json.dumps({"rows": len(rows), "out": args.out}))
@@ -258,10 +274,109 @@ def main(argv: list[str] | None = None) -> int:
     dataset_parser.add_argument("--clips-per-speaker", type=int, default=6)
     dataset_parser.add_argument("--seed", type=int, default=42)
     dataset_parser.add_argument("--noise")
+    dataset_parser.add_argument("--require-verified-speech", action="store_true")
     dataset_parser.add_argument(
         "--session-limit", type=int, help="e.g. 30 independent dev sessions"
     )
     dataset_parser.set_defaults(handler=_run_dataset)
+
+    import_parser = subcommands.add_parser(
+        "import-speech", help="attach checksum-matched speech labels"
+    )
+    import_parser.add_argument("manifest")
+    import_parser.add_argument("labels")
+    import_parser.add_argument("--out", required=True)
+
+    def run_import(args):
+        from meeting_asr.data_gen.annotations import import_speech_labels
+
+        payload = import_speech_labels(args.manifest, args.labels, args.out)
+        print(json.dumps(payload["speech_label_import"], ensure_ascii=False, indent=2))
+        return 0
+
+    import_parser.set_defaults(handler=run_import)
+    review_parser = subcommands.add_parser(
+        "review-speech", help="create an offline speech listening package"
+    )
+    review_parser.add_argument("manifest")
+    review_parser.add_argument("--out", required=True)
+
+    def run_review(args):
+        from meeting_asr.data_gen.review import build_speech_review
+
+        print(
+            json.dumps(build_speech_review(args.manifest, args.out), ensure_ascii=False, indent=2)
+        )
+        return 0
+
+    review_parser.set_defaults(handler=run_review)
+
+    proposal_parser = subcommands.add_parser(
+        "propose-speech", help="propose independent VAD labels for listening"
+    )
+    proposal_parser.add_argument("manifest")
+    proposal_parser.add_argument("--out", required=True)
+
+    def run_propose(args):
+        from meeting_asr.data_gen.propose import propose_speech
+
+        print(json.dumps(propose_speech(args.manifest, args.out), ensure_ascii=False, indent=2))
+        return 0
+
+    proposal_parser.set_defaults(handler=run_propose)
+
+    plan_parser = subcommands.add_parser(
+        "plan-data", help="check source clip capacity before generating data"
+    )
+    plan_parser.add_argument("manifest")
+    plan_parser.add_argument("--out", required=True)
+    plan_parser.add_argument("--conversations", type=int, default=20)
+    plan_parser.add_argument("--clips-per-speaker", type=int, default=6)
+    plan_parser.add_argument("--minimum-duration-sec", type=float, default=180)
+
+    def run_plan(args):
+        from meeting_asr.evaluation.readiness import plan_data, write_report
+
+        report = plan_data(
+            args.manifest,
+            conversations=args.conversations,
+            clips_per_speaker=args.clips_per_speaker,
+            minimum_duration_sec=args.minimum_duration_sec,
+        )
+        write_report(args.out, report)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0 if report["ready"] else 2
+
+    plan_parser.set_defaults(handler=run_plan)
+    audit_parser = subcommands.add_parser(
+        "audit-experiments", help="check paired sessions and reference labels"
+    )
+    audit_parser.add_argument("manifest")
+    audit_parser.add_argument("--other-manifest")
+    audit_parser.add_argument("--out", required=True)
+    audit_parser.add_argument("--expected-conversations", type=int)
+    audit_parser.add_argument("--minimum-duration-sec", type=float, default=0)
+    audit_parser.add_argument("--require-verified-speech", action="store_true")
+
+    def run_audit(args):
+        from meeting_asr.evaluation.readiness import audit_experiments, write_report
+
+        report = audit_experiments(
+            args.manifest,
+            other_manifest=args.other_manifest,
+            expected_conversations=args.expected_conversations,
+            minimum_duration_sec=args.minimum_duration_sec,
+            require_verified_speech=args.require_verified_speech,
+        )
+        write_report(args.out, report)
+        print(
+            json.dumps(
+                {k: v for k, v in report.items() if k != "rows"}, ensure_ascii=False, indent=2
+            )
+        )
+        return 0 if report["ready"] else 2
+
+    audit_parser.set_defaults(handler=run_audit)
 
     experiments_parser = subcommands.add_parser("experiments", help="run RQ1/RQ2 with paired data")
     experiments_parser.add_argument("manifest")
@@ -270,6 +385,9 @@ def main(argv: list[str] | None = None) -> int:
         "--backend", choices=["all", "pyannote", "ecapa"], default="all"
     )
     experiments_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    experiments_parser.add_argument("--require-verified-speech", action="store_true")
+    experiments_parser.add_argument("--other-manifest")
+    experiments_parser.add_argument("--expected-conversations", type=int)
     experiments_parser.set_defaults(handler=_run_experiments)
 
     rq3_parser = subcommands.add_parser("evaluate-confidence", help="RQ3 ablation and risk curves")
@@ -324,6 +442,83 @@ def main(argv: list[str] | None = None) -> int:
     benchmark_parser.add_argument("--repetitions", type=int, default=1)
     benchmark_parser.add_argument("--cached", action="store_true")
     benchmark_parser.set_defaults(handler=_run_benchmark)
+
+    suite_parser = subcommands.add_parser(
+        "benchmark-suite", help="benchmark supplied 5/15/30 minute recordings"
+    )
+    suite_parser.add_argument("audio", nargs="+")
+    suite_parser.add_argument("--out", required=True)
+    suite_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    suite_parser.add_argument("--repetitions", type=int, default=1)
+    suite_parser.add_argument("--cached", action="store_true")
+
+    def run_suite(args):
+        from meeting_asr.benchmark import benchmark_suite
+
+        result = benchmark_suite(
+            args.audio,
+            load_config(args.config),
+            args.out,
+            repetitions=args.repetitions,
+            cached=args.cached,
+        )
+        print(json.dumps({"recordings": len(result["recordings"]), "out": args.out}))
+        return 0
+
+    suite_parser.set_defaults(handler=run_suite)
+    llm_parser = subcommands.add_parser(
+        "llm-check", help="check provider configuration without requests"
+    )
+    llm_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+
+    def run_llm_check(args):
+        from meeting_asr.evaluation.acceptance import llm_readiness
+
+        report = llm_readiness(load_config(args.config)["llm"])
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0 if report["ready"] else 2
+
+    llm_parser.set_defaults(handler=run_llm_check)
+    acceptance_parser = subcommands.add_parser(
+        "evaluate-meetings", help="evaluate supplied meetings and LLM outputs"
+    )
+    acceptance_parser.add_argument("manifest")
+    acceptance_parser.add_argument("--out", required=True)
+    acceptance_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    acceptance_parser.add_argument("--provider", choices=["none", "configured"], default="none")
+    acceptance_parser.add_argument("--run-asr", action="store_true")
+
+    def run_acceptance(args):
+        from meeting_asr.evaluation.acceptance import evaluate_meetings
+
+        report = evaluate_meetings(
+            args.manifest,
+            load_config(args.config),
+            args.out,
+            provider_mode=args.provider,
+            run_asr=args.run_asr,
+        )
+        print(json.dumps({"meetings": len(report["meetings"]), "out": args.out}))
+        return 0
+
+    acceptance_parser.set_defaults(handler=run_acceptance)
+    semantic_parser = subcommands.add_parser(
+        "score-review", help="score human-reviewed LLM answers and summaries"
+    )
+    semantic_parser.add_argument("report")
+    semantic_parser.add_argument("reviews")
+    semantic_parser.add_argument("--out", required=True)
+
+    def run_semantic(args):
+        from meeting_asr.evaluation.acceptance import score_semantic_reviews
+        from meeting_asr.evaluation.readiness import write_report
+
+        report = score_semantic_reviews(args.report, args.reviews)
+        write_report(args.out, report)
+        print(json.dumps({k: v for k, v in report.items() if k != "reviews"}, indent=2))
+        return 0
+
+    semantic_parser.set_defaults(handler=run_semantic)
 
     args = parser.parse_args(argv)
     try:

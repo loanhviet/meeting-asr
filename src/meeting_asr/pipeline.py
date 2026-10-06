@@ -63,9 +63,16 @@ def run_pipeline(
     device = config.get("runtime", {}).get("device", "auto")
     started = time.perf_counter()
     stages = []
+    stage_elapsed_sec = {}
+    timing_stage, timing_started = None, started
     set_seed(int(config["seed"]))
 
     def notify(stage, fraction):
+        nonlocal timing_stage, timing_started
+        now = time.perf_counter()
+        if timing_stage is not None:
+            stage_elapsed_sec[timing_stage] = now - timing_started
+        timing_stage, timing_started = stage, now
         if progress:
             progress(stage, fraction)
 
@@ -86,7 +93,7 @@ def run_pipeline(
             "config": config["diarization"],
             **common,
             "oracle": file_sha256(oracle_rttm) if oracle_rttm else None,
-            "implementation": 2,
+            "implementation": 3,
         }
     )
     diar_path = cache / "diarization" / f"{key2}.json"
@@ -116,7 +123,7 @@ def run_pipeline(
     _atomic_text(destination / "diarsignals.json", json.dumps(diar.to_dict(), ensure_ascii=False))
     stages.append({"stage": "M2", "cache_hit": hit, "key": key2, "backend": diar.backend})
     notify("M3", 0.4)
-    key3 = config_hash({"diarization": key2, "asr": config["asr"], **common, "implementation": 1})
+    key3 = config_hash({"diarization": key2, "asr": config["asr"], **common, "implementation": 2})
     transcript_path = cache / "asr" / f"{key3}.json"
     transcript = None
     if not no_cache and transcript_path.exists():
@@ -154,6 +161,8 @@ def run_pipeline(
                 summary["topics"],
                 summary["action_items"],
             )
+            minutes.summary_points = summary["summary_points"]
+            minutes.decisions = summary["decisions"]
         except (ValueError, RuntimeError, KeyError, TypeError) as exc:
             summary_error = str(exc)
     _atomic_text(
@@ -167,12 +176,16 @@ def run_pipeline(
     )
     write_minutes_json(destination / "minutes.json", minutes)
     elapsed = time.perf_counter() - started
+    if timing_stage is not None:
+        stage_elapsed_sec[timing_stage] = time.perf_counter() - timing_started
     write_run_manifest(
         destination / "run.json",
         config=config,
         audio_path=source,
         result={
             "stages": stages,
+            "stage_elapsed_sec": stage_elapsed_sec,
+            "audio_duration_sec": audio.duration,
             "elapsed_sec": elapsed,
             "rtf": elapsed / audio.duration,
             "versions": versions,

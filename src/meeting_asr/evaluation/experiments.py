@@ -84,6 +84,8 @@ def experiment_manifest(path):
         seen.add(identity)
         for field in ("audio", "reference_json", "reference_rttm"):
             session[field] = str((path.parent / session[field]).resolve())
+        if session.get("oracle_rttm"):
+            session["oracle_rttm"] = str((path.parent / session["oracle_rttm"]).resolve())
     return payload
 
 
@@ -140,7 +142,12 @@ def run_experiments(manifest, config, out, backends=("pyannote", "ecapa"), log_p
         options = copy.deepcopy(config)
         options["llm"]["enabled"] = False
         oracle_dir = session_dir / "oracle"
-        run_pipeline(session["audio"], options, oracle_dir, oracle_rttm=session["reference_rttm"])
+        run_pipeline(
+            session["audio"],
+            options,
+            oracle_dir,
+            oracle_rttm=session.get("oracle_rttm", session["reference_rttm"]),
+        )
         oracle = read_transcript_json(oracle_dir / "transcript.json")
         oracle_score = transcript_scores(reference, oracle)
         for backend in backends:

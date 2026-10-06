@@ -39,7 +39,7 @@ try {
     expect(duration).toBeGreaterThan(80);
     expect(duration).toBeLessThan(100);
     await page
-      .getByRole("button", { name: /^Nghe từ/ })
+      .getByRole("button", { name: /^Nghe lượt/ })
       .first()
       .click();
     await page.waitForFunction(() => {
@@ -48,7 +48,7 @@ try {
     });
     await page.locator("audio").evaluate((audio) => audio.pause());
     await page.getByRole("tab", { name: "Timeline", exact: true }).click();
-    await page.getByRole("tab", { name: "Nội dung", exact: true }).click();
+    await page.getByRole("tab", { name: "Transcript", exact: true }).click();
     rows.push({ name, duration, playback: true, timeline: true });
     if (name === "demo_clean.wav") {
       await page.screenshot({
@@ -57,6 +57,7 @@ try {
       });
     }
   }
+  await page.getByText("Xuất biên bản", { exact: true }).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: /PDF/ }).click();
   const download = await downloadPromise;
@@ -71,6 +72,7 @@ try {
     path: new URL("web-mobile.png", output).pathname,
     fullPage: true,
   });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.reload();
   await select("demo_clean.wav");
   await page

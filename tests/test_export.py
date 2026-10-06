@@ -47,3 +47,22 @@ def test_exports_use_reviewed_text_and_disclose_stale_summary():
 def test_pdf_embeds_unicode_font_and_escapes_markup(monkeypatch):
     monkeypatch.setenv("MEETING_PDF_FONT", "")
     assert export_pdf(view()).startswith(b"%PDF-")
+
+
+def test_grounded_export_resolves_audio_times_and_includes_decisions():
+    data = view()
+    data["summary_stale"] = False
+    turn = data["edited"]["turns"][0]
+    turn["turn_id"] = "source"
+    data["edited"]["summary_points"] = [
+        {"text": "Chốt bản thử nghiệm", "source_turn_ids": ["source"], "uncertain": False}
+    ]
+    data["edited"]["decisions"] = [
+        {"text": "Gửi báo cáo", "source_turn_ids": ["source"], "uncertain": False}
+    ]
+    output = export_markdown(data).decode()
+    assert "## Quyết định" in output
+    assert "Gửi báo cáo" in output
+    assert "nguồn: 00:00:01.234–00:00:03.456 (An)" in output
+    data["summary_stale"] = True
+    assert "Gửi báo cáo" not in export_markdown(data).decode()

@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "purpose": "Independent fictional acceptance conversation for the revised abstention prompt; not an ASR quality corpus.",
+  "speakers": ["Trung", "Hà"],
+  "script": [
+    "Hôm nay mình chốt việc kiểm tra tài liệu hướng dẫn. Phần thanh toán sẽ trao đổi trong buổi khác, chưa có số tiền nào được chốt.",
+    "Em là Hà, em nhận kiểm tra tài liệu hướng dẫn và gửi kết quả trước mười giờ sáng thứ Năm.",
+    "Anh sửa lại thời hạn nhé. Chuyển sang mười giờ sáng thứ Sáu. Thứ Năm anh chưa nhận được tài liệu mới từ khách.",
+    "Vâng, em xác nhận gửi kết quả trước mười giờ sáng thứ Sáu cho anh Trung.",
+    "Bản dịch tiếng Anh chưa giao cho ai. Phòng họp cho buổi tiếp theo cũng chưa được đặt, mình sẽ thông báo sau.",
+    "Em rõ rồi. Vậy phần đã chốt hôm nay là kiểm tra tài liệu và gửi kết quả thứ Sáu; bản dịch và phòng họp còn để mở."
+  ],
+  "questions": [
+    {"id": "owner", "question": "Ai nhận kiểm tra tài liệu hướng dẫn?", "status": "found", "answer": "Hà nhận kiểm tra tài liệu hướng dẫn.", "source_turn_ids": ["t01"]},
+    {"id": "deadline", "question": "Thời hạn gửi kết quả cuối cùng là lúc nào?", "status": "found", "answer": "Trước 10 giờ sáng thứ Sáu; thời hạn thứ Năm đã được sửa.", "source_turn_ids": ["t02", "t03"]},
+    {"id": "translation_status", "question": "Bản dịch tiếng Anh đã được giao cho ai chưa?", "status": "found", "answer": "Chưa giao cho ai.", "source_turn_ids": ["t04"]},
+    {"id": "budget", "question": "Số tiền thanh toán đã chốt là bao nhiêu?", "status": "not_found", "answer": null, "source_turn_ids": []},
+    {"id": "translator", "question": "Tên người được giao làm bản dịch tiếng Anh là gì?", "status": "not_found", "answer": null, "source_turn_ids": []},
+    {"id": "room", "question": "Buổi tiếp theo sẽ họp ở phòng số mấy?", "status": "not_found", "answer": null, "source_turn_ids": []}
+  ]
+}

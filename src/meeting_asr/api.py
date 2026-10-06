@@ -5,16 +5,17 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from meeting_asr.ask import AskMeeting, transcript_hash
 from meeting_asr.jobs import JobStore, JobWorker, RevisionConflict, new_job_id
 from meeting_asr.pipeline import project_path, run_pipeline
-from meeting_asr.settings import load_config
+from meeting_asr.settings import config_hash, load_config
 
 MAX_UPLOAD = 200 * 1024 * 1024
 
@@ -22,8 +23,24 @@ MAX_UPLOAD = 200 * 1024 * 1024
 class TurnEdit(BaseModel):
     text: str | None = Field(default=None, max_length=50000)
     speaker_name: str | None = Field(default=None, min_length=1, max_length=100)
+    speaker_id: str | None = Field(default=None, min_length=1, max_length=100)
     reviewed: bool = True
     expected_revision: int | None = Field(default=None, ge=0)
+
+
+class SpeakerMerge(BaseModel):
+    source_speaker: str = Field(min_length=1, max_length=100)
+    target_speaker: str = Field(min_length=1, max_length=100)
+    expected_revision: int = Field(ge=0)
+
+
+class SummaryRequest(BaseModel):
+    template: Literal["project", "standup", "customer"] = "project"
+
+
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    expected_revision: int = Field(ge=0)
 
 
 def public_job(job):
@@ -43,7 +60,9 @@ def public_job(job):
     }
 
 
-def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=True):
+def create_app(
+    config=None, root=None, *, processor=run_pipeline, start_worker=True, answerer_factory=None
+):
     config = (
         load_config(os.getenv("MEETING_CONFIG"))
         if config is None and os.getenv("MEETING_CONFIG")
@@ -85,7 +104,11 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "llm_enabled": bool(config["llm"]["enabled"])}
+        return {
+            "status": "ok",
+            "llm_enabled": bool(config["llm"]["enabled"]),
+            "ask_enabled": bool(config["llm"]["enabled"]),
+        }
 
     @app.get("/api/jobs")
     def list_jobs():
@@ -138,6 +161,73 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
             return store.edit(job_id, turn_id, **update.model_dump())
         except RevisionConflict as exc:
             raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/api/jobs/{job_id}/history")
+    def history(job_id: str):
+        return store.history(job_id)
+
+    @app.get("/api/jobs/{job_id}/questions")
+    def questions(job_id: str):
+        return store.answers(job_id)
+
+    @app.post("/api/jobs/{job_id}/questions")
+    def ask(job_id: str, options: AskRequest):
+        view = store.result(job_id)
+        question = options.question.strip()
+        if not question:
+            raise HTTPException(422, "Question must not be blank")
+        if options.expected_revision != view["revision"]:
+            raise HTTPException(409, "transcript changed; reload before asking")
+        if not config["llm"]["enabled"]:
+            raise HTTPException(409, "Configure and enable LLM to ask meeting questions")
+        try:
+            answerer = (
+                answerer_factory()
+                if answerer_factory
+                else AskMeeting(config["llm"], store.root / "ask-cache")
+            )
+        except ValueError as exc:
+            raise HTTPException(409, "LLM configuration is incomplete") from exc
+        turns = view["edited"]["turns"]
+        key = config_hash(
+            {
+                "identity": answerer.identity,
+                "question": question,
+                "revision": view["revision"],
+                "transcript": transcript_hash(turns),
+            }
+        )
+        cached = store.answers(job_id, key)
+        if cached and not cached[0]["stale"]:
+            try:
+                return store.save_answer(
+                    job_id,
+                    view["revision"],
+                    key,
+                    {k: cached[0][k] for k in ("question", "status", "answer_points")},
+                )
+            except RevisionConflict as exc:
+                raise HTTPException(409, "transcript changed; reload before asking again") from exc
+        try:
+            payload = {"question": question, **answerer.answer(question, turns)}
+        except (RuntimeError, ValueError, KeyError, TypeError, OSError) as exc:
+            # Provider errors and response bodies must not disclose transcript content.
+            raise HTTPException(502, "Không tạo được câu trả lời hợp lệ. Hãy thử lại.") from exc
+        try:
+            return store.save_answer(job_id, view["revision"], key, payload)
+        except RevisionConflict as exc:
+            raise HTTPException(409, "transcript changed; reload before asking again") from exc
+
+    @app.post("/api/jobs/{job_id}/speakers/merge")
+    def merge(job_id: str, update: SpeakerMerge):
+        try:
+            return store.merge_speakers(job_id, **update.model_dump())
+        except RevisionConflict as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @app.post("/api/jobs/{job_id}/retry", status_code=202)
     def retry(job_id: str):
@@ -148,7 +238,7 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
         return {"job_id": job_id}
 
     @app.post("/api/jobs/{job_id}/summary", status_code=202)
-    def regenerate(job_id: str):
+    def regenerate(job_id: str, options: SummaryRequest | None = None):
         job = store.get(job_id)
         store.result(job_id)
         if job["status"] not in {"complete", "failed"}:
@@ -156,7 +246,13 @@ def create_app(config=None, root=None, *, processor=run_pipeline, start_worker=T
         if not config["llm"]["enabled"]:
             raise HTTPException(409, "Configure and enable LLM summarization first")
         store.update(
-            job_id, status="queued", stage="queued", kind="summary", progress=0, error=None
+            job_id,
+            status="queued",
+            stage="queued",
+            kind="summary",
+            progress=0,
+            error=None,
+            summary_template=options.template if options else "project",
         )
         return {"job_id": job_id}
 

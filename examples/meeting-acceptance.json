@@ -1,0 +1,28 @@
+{
+  "meetings": [
+    {
+      "id": "meeting_001",
+      "synthetic": false,
+      "source_url": "REPLACE_WITH_PUBLIC_RECORDING_SOURCE",
+      "license": "REPLACE_WITH_RECORDING_USAGE_TERMS",
+      "audio": "../data/real/meeting_001.wav",
+      "minutes": "../results/real/meeting_001/minutes.json",
+      "questions": [
+        {
+          "id": "owner",
+          "question": "Ai nhận kiểm thử?",
+          "status": "found",
+          "answer": "REPLACE_WITH_GOLD_ANSWER_AFTER_LISTENING",
+          "source_turn_ids": ["REPLACE_WITH_ACTUAL_TURN_ID"]
+        },
+        {
+          "id": "missing_budget",
+          "question": "Ngân sách đã chốt là bao nhiêu?",
+          "status": "not_found",
+          "answer": null,
+          "source_turn_ids": []
+        }
+      ]
+    }
+  ]
+}

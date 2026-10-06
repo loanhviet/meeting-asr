@@ -105,10 +105,12 @@ def compose_demo(clips: list[Clip], name: str, *, overlap=False, snr_db=None, se
         snr_db,
         snr_db,
         "none" if snr_db is None else "seeded white noise",
+        segments,
+        "full_clip_unverified",
     )
 
 
-async def generate_demo(out: str | Path, cache: str | Path):
+async def generate_demo(out: str | Path, cache: str | Path, *, texts=DEMO_TEXT):
     try:
         import edge_tts
     except ImportError as exc:
@@ -120,7 +122,7 @@ async def generate_demo(out: str | Path, cache: str | Path):
     cache.mkdir(parents=True, exist_ok=True)
     version = importlib.metadata.version("edge-tts")
     clips = []
-    for index, text in enumerate(DEMO_TEXT):
+    for index, text in enumerate(texts):
         speaker = f"SPEAKER_{index % 2:02d}"
         voice = VOICES[speaker]
         key = hashlib.sha256(f"{version}|{voice}|{text}".encode()).hexdigest()
@@ -159,7 +161,7 @@ async def generate_demo(out: str | Path, cache: str | Path):
         clips.append(
             Clip(f"tts_{index:02d}", speaker, text, waveform, f"synthetic Edge TTS: {voice}", sr)
         )
-        print(f"TTS turn {index + 1}/{len(DEMO_TEXT)} ready", flush=True)
+        print(f"TTS turn {index + 1}/{len(texts)} ready", flush=True)
     sessions = []
     for name, options in (
         ("demo_clean", {}),
