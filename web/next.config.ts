@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  experimental: {
+    // Allow the API's 200 MiB file limit plus multipart headers and boundaries.
+    proxyClientMaxBodySize: 201 * 1024 * 1024,
+  },
   async rewrites() {
     return [
       {

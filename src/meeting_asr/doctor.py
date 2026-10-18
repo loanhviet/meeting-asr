@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import importlib.metadata
+import json
 import os
 import shutil
+import subprocess
 import sys
+from pathlib import Path
 
 
-def environment_report():
+def environment_report(config=None):
+    from meeting_asr.settings import load_config
+
+    config = load_config() if config is None else config
     versions = {}
     for package in (
         "torch",
@@ -41,7 +47,7 @@ def environment_report():
         token = token or bool(get_token())
     except ImportError:
         pass
-    return {
+    report = {
         "python": sys.version.split()[0],
         "executables": {
             name: shutil.which(name) is not None for name in ("ffmpeg", "ffprobe", "node", "npm")
@@ -53,4 +59,32 @@ def environment_report():
         "model_access": "not verified",
         "llm_key_present": bool(os.getenv("MEETING_LLM_API_KEY")),
         "llm_model_configured": bool(os.getenv("MEETING_LLM_MODEL")),
+        "asr_engine": config["asr"].get("engine", "whisper"),
+        "asr_model": config["asr"]["model_name"],
+        "diarization_backend": config["diarization"]["backend"],
     }
+    if report["asr_engine"] == "dicow":
+        from meeting_asr.dicow import author_runtime
+
+        try:
+            python, upstream = author_runtime(config)
+            inspection = subprocess.run(
+                [str(python), str(Path(__file__).with_name("dicow_runner.py")), "--inspect"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=60,
+            )
+            runtime = json.loads(inspection.stdout)
+            report["dicow_runtime"] = {
+                "ready": True,
+                "executable": str(python),
+                "upstream_dir": str(upstream),
+                **runtime,
+            }
+            report["gpu"] = runtime["gpu"]
+            report["gpu_error"] = None
+            report["hf_token_present"] = token or runtime["hf_token_present"]
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+            report["dicow_runtime"] = {"ready": False, "error": type(exc).__name__}
+    return report

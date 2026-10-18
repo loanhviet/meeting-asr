@@ -20,7 +20,7 @@ Manifest clip giữ nguyên `wav`, `text`, người nói, nguồn, license và c
 Nhãn được kiểm tra phải có `status: human_verified`, `reviewed_by` và `reviewed_at`. Công cụ không tự nâng nhãn máy thành nhãn đã nghe. Khoảng phải hữu hạn, tăng dần, không chồng nhau và nằm trong clip. File audio đổi checksum thì phải tạo/soát lại nhãn.
 
 ```bash
-uv sync --locked --extra dev --extra api --extra inference --extra demo --extra annotation
+uv sync --locked --extra dev --extra api --extra demo --extra annotation
 uv run --no-sync meeting-asr propose-speech data/audited/dev.json --out data/audited/dev-proposed.json
 uv run --no-sync meeting-asr review-speech data/audited/dev-proposed.json --out results/dev-review
 python -m http.server 8080 --bind 127.0.0.1 --directory results/dev-review
@@ -97,7 +97,7 @@ Nghiệm thu website trên ba bản ghi khác nhau: upload, nghe lượt flagged
 ## 4. Hiệu năng và bàn giao
 
 ```bash
-MEETING_LLM_ENABLED=false uv run --no-sync meeting-asr benchmark-suite data/real/meeting_5min.wav data/real/meeting_15min.wav data/real/meeting_30min.wav --config configs/improved-ecapa.yaml --out results/benchmark-real
+MEETING_LLM_ENABLED=false uv run --no-sync meeting-asr benchmark-suite data/real/meeting_5min.wav data/real/meeting_15min.wav data/real/meeting_30min.wav --config configs/default.yaml --out results/benchmark-real
 ```
 
 `suite.json`/`suite.csv` ghi thời lượng, RTF, từng stage, phiên bản, device và peak allocated VRAM. Mặc định bỏ qua cache; `--cached` cho phép cache và ghi rõ chế độ. Chạy CPU không đọc VRAM của GPU nhàn rỗi. Đo một lượt có thể gồm chi phí khởi tạo model; không suy ra p95 hay khả năng chịu nhiều người dùng từ một lượt.

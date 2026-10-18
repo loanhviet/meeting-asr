@@ -29,7 +29,7 @@ def test_pipeline_resumes_after_asr_failure_and_invalidates_upstream(tmp_path, m
     source = tmp_path / "audio.wav"
     t = np.arange(96000) / 16000
     write_mono_wav(source, 0.2 * np.sin(2 * np.pi * 200 * t), 16000)
-    config = load_config()
+    config = load_config("configs/baseline-phowhisper.yaml")
     config["paths"]["cache_dir"] = str(tmp_path / "cache")
     calls = []
 

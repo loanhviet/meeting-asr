@@ -116,6 +116,12 @@ def _run_prepare(args: argparse.Namespace) -> int:
 def _run_pipeline(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     if args.backend:
+        engine = config["asr"].get("engine", "whisper")
+        if (engine == "dicow") != (args.backend == "diarizen"):
+            raise ValueError(
+                "Backend must match the ASR engine; use configs/baseline-phowhisper.yaml "
+                "for pyannote/ecapa, or configs/default.yaml for diarizen"
+            )
         config["diarization"]["backend"] = args.backend
     if args.device:
         config.setdefault("runtime", {})["device"] = args.device
@@ -168,8 +174,16 @@ def _run_experiments(args):
         )
         if not audit["ready"]:
             raise ValueError("experiment readiness failed: " + "; ".join(audit["issues"]))
-    backends = ("pyannote", "ecapa") if args.backend == "all" else (args.backend,)
-    rows = run_experiments(args.manifest, load_config(args.config), args.out, backends)
+    config = load_config(args.config)
+    if config["asr"].get("engine", "whisper") == "dicow":
+        if args.backend not in {"all", "diarizen"}:
+            raise ValueError("DiCoW experiments require --backend diarizen")
+        backends = ("diarizen",)
+    else:
+        if args.backend == "diarizen":
+            raise ValueError("DiariZen experiments require the DiCoW author config")
+        backends = ("pyannote", "ecapa") if args.backend == "all" else (args.backend,)
+    rows = run_experiments(args.manifest, config, args.out, backends)
     print(json.dumps({"rows": len(rows), "out": args.out}))
     return 0
 
@@ -194,10 +208,8 @@ def _run_calibrate(args):
 
 def _run_doctor(args):
     from meeting_asr.doctor import environment_report
-    from meeting_asr.settings import load_environment
 
-    load_environment()
-    print(json.dumps(environment_report(), ensure_ascii=False, indent=2))
+    print(json.dumps(environment_report(load_config(args.config)), ensure_ascii=False, indent=2))
     return 0
 
 
@@ -208,7 +220,12 @@ def _run_serve(args):
         from meeting_asr.api import create_app
     except ImportError as exc:
         raise RuntimeError("Install API dependencies: uv sync --extra api") from exc
-    uvicorn.run(create_app(load_config(args.config)), host=args.host, port=args.port)
+    config = load_config(args.config)
+    if config["asr"].get("engine") == "dicow":
+        from meeting_asr.dicow import author_runtime
+
+        author_runtime(config)
+    uvicorn.run(create_app(config), host=args.host, port=args.port)
     return 0
 
 
@@ -260,7 +277,7 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("audio")
     run_parser.add_argument("--out", required=True)
     run_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    run_parser.add_argument("--backend", choices=["pyannote", "ecapa"])
+    run_parser.add_argument("--backend", choices=["pyannote", "ecapa", "diarizen"])
     run_parser.add_argument("--device", choices=["auto", "cpu", "cuda"])
     run_parser.add_argument("--batch-size", type=int)
     run_parser.add_argument("--oracle-rttm")
@@ -382,7 +399,7 @@ def main(argv: list[str] | None = None) -> int:
     experiments_parser.add_argument("manifest")
     experiments_parser.add_argument("--out", required=True)
     experiments_parser.add_argument(
-        "--backend", choices=["all", "pyannote", "ecapa"], default="all"
+        "--backend", choices=["all", "pyannote", "ecapa", "diarizen"], default="all"
     )
     experiments_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     experiments_parser.add_argument("--require-verified-speech", action="store_true")
@@ -410,6 +427,7 @@ def main(argv: list[str] | None = None) -> int:
     doctor_parser = subcommands.add_parser(
         "doctor", help="inspect environment without exposing keys"
     )
+    doctor_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     doctor_parser.set_defaults(handler=_run_doctor)
 
     demo_parser = subcommands.add_parser(

@@ -12,6 +12,9 @@ services:
       HF_HOME: /app/.cache/huggingface
       TORCH_HOME: /app/.cache/torch
       XDG_CACHE_HOME: /app/.cache/xdg
+      MEETING_DICOW_PYTHON: /opt/dicow/venv/bin/python
+      MEETING_DICOW_UPSTREAM_DIR: /opt/dicow/upstream/DiCoW
+      MEETING_DICOW_RUNTIME_MANIFEST: /opt/dicow/runtime.json
     user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     volumes:
       - ./data:/app/data

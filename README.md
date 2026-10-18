@@ -1,14 +1,18 @@
 # Meeting Minutes ASR
 
-Hệ thống biên bản họp tiếng Việt: phân người nói, phiên âm, đánh dấu lượt nói cần soát, tóm tắt và trích việc cần làm. Có pipeline CLI, backend pyannote và ECAPA + overlap detector, PhoWhisper, confidence, bộ chạy RQ1–RQ3, FastAPI/SQLite và website Next.js để xem/sửa/export. **Code đã có; chất lượng model và kết quả nghiên cứu cần nghiệm thu trên dữ liệu thật.** Tỷ lệ từ còn sai của RQ3 không phải WER cả file. `asr.collect_no_speech` mặc định tắt.
+Hệ thống biên bản họp tiếng Việt: phân người nói, phiên âm, đánh dấu lượt nói cần soát, tóm tắt và trích việc cần làm. Luồng chính là **DiariZen → STNO/FDDT → DiCoW đa ngôn ngữ**, dùng checkpoint tác giả. Có pipeline CLI, công cụ đánh giá, FastAPI/SQLite và website Next.js để xem/sửa/export. Pyannote/ECAPA + PhoWhisper được giữ riêng làm baseline thí nghiệm. **Code đã có; chất lượng model và kết quả nghiên cứu cần nghiệm thu trên dữ liệu thật.** Tỷ lệ từ còn sai của RQ3 không phải WER cả file.
 
 Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm và checklist nghiệm thu: [TESTING.md](TESTING.md).
 
-Trạng thái hiện tại và số đo đã kiểm tra: [RELEASE_STATUS.md](RELEASE_STATUS.md). Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](ACCEPTANCE.md). Có [sơ đồ kiến trúc](ARCHITECTURE.md) và [README tiếng Anh](README.en.md).
+Kết quả DiCoW và giới hạn: [DICOW_COMPARISON.md](DICOW_COMPARISON.md). [RELEASE_STATUS.md](RELEASE_STATUS.md) giữ snapshot hệ cũ ngày 06/10. Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](ACCEPTANCE.md). Có [sơ đồ kiến trúc](ARCHITECTURE.md) và [README tiếng Anh](README.en.md).
+
+**CLI, API và Docker mặc định dùng DiariZen + DiCoW** qua `configs/default.yaml`; `configs/dicow-author.yaml` là profile tương đương để gọi tường minh. Runtime tác giả tách khỏi môi trường ứng dụng; xem [DICOW.md](DICOW.md). `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` chỉ dùng khi chủ động chạy đối chứng.
+
+Hướng phát triển đã thống nhất: DiCoW làm hướng nghiên cứu chính, giữ hệ cũ làm baseline. Đọc [CONTEXT.md](CONTEXT.md) để tiếp tục từ quyết định, kết quả và công việc còn lại của phiên 12/10/2026.
 
 ## Chạy bằng Docker
 
-Cần Docker Engine và Docker Compose. Tạo `.env` từ `.env.example`, điền `HF_TOKEN` đã được cấp quyền cho các model Pyannote trước khi xử lý audio. Lần đầu build và tải model cần mạng, có thể tốn nhiều dung lượng và thời gian.
+Cần Docker Engine và Docker Compose. Tạo `.env` từ `.env.example`, điền `HF_TOKEN` có quyền đọc checkpoint cần thiết, gồm WeSpeaker trước khi xử lý audio. Lần đầu build và tải model cần mạng, có thể tốn nhiều dung lượng và thời gian.
 
 ```bash
 test -f .env || cp .env.example .env
@@ -16,16 +20,17 @@ mkdir -p data results .cache ~/.cache/huggingface
 docker compose up --build -d
 ```
 
-Mở `http://127.0.0.1:3000`. Website chuyển các yêu cầu `/api` tới FastAPI trong mạng Compose. Kiểm tra `http://127.0.0.1:3000/api/health`; xem log bằng `docker compose logs -f api web`. Dữ liệu trong `data/`, `results/` và `.cache/` được gắn từ thư mục dự án nên vẫn còn sau khi dừng container. Có thể chạy CLI trong container bằng `docker compose exec api meeting-asr doctor`.
+Mở `http://127.0.0.1:3000`. Audio upload mới chạy DiariZen + DiCoW. Website chuyển các yêu cầu `/api` tới FastAPI trong mạng Compose. Kiểm tra `http://127.0.0.1:3000/api/health`; xem log bằng `docker compose logs -f api web`. Dữ liệu trong `data/`, `results/` và `.cache/` được gắn từ thư mục dự án nên vẫn còn sau khi dừng container. Có thể chạy CLI trong container bằng `docker compose exec api meeting-asr doctor`: `asr_engine` phải là `dicow`, `diarization_backend` là `diarizen` và `dicow_runtime.ready` là `true`. Health xác nhận cấu hình server; doctor kiểm tra runtime mà không tải model. Job cũ vẫn giữ kết quả/bản sửa; muốn nhận dạng lại bằng hệ mới, upload thành job mới.
 
 Cache model Hugging Face trên máy (`~/.cache/huggingface`) cũng được dùng lại trong container; nếu cache của bạn nằm chỗ khác, đặt `HF_CACHE_PATH` thành đường dẫn đó trước khi chạy Compose. Lần build đầu Docker vẫn cần cài thư viện Python/Node riêng; các lần chạy lại dùng image và cache đã có.
 
 API mặc định ghi file bằng UID/GID `1000:1000`; nếu tài khoản máy chủ dùng ID khác, đặt `DOCKER_UID=$(id -u) DOCKER_GID=$(id -g)` trước lệnh Compose.
 
-Mặc định dùng target `cpu` với Torch/Torchaudio CPU, không cài các runtime CUDA. Nếu máy có NVIDIA GPU và NVIDIA Container Toolkit, chạy `docker compose -f compose.yaml -f compose.gpu.yaml up --build -d`; override chọn target `gpu`. Để `MEETING_DEVICE=auto` hoặc `cuda` trong `.env` khi dùng GPU; image CPU nên dùng `auto` hoặc `cpu`. Dừng bằng `docker compose down`. Image GPU và cache build có thể cần nhiều GB trên phân vùng Docker; kiểm tra dung lượng trước lần build đầu. Image web dùng Next standalone và chạy dưới user `node`.
+Docker tự cài code tác giả đã pin và runtime riêng tại `/opt/dicow`; không sử dụng venv trong `.cache/` của host. Mặc định dùng target `cpu` với Torch/Torchaudio CPU. CPU phù hợp kiểm tra chức năng; nên dùng GPU cho audio họp. Nếu máy có NVIDIA GPU và NVIDIA Container Toolkit, chạy `docker compose -f compose.yaml -f compose.gpu.yaml up --build -d`; override chọn target `gpu`. Để `MEETING_DEVICE=auto` hoặc `cuda` trong `.env` khi dùng GPU; image CPU nên dùng `auto` hoặc `cpu`. Dừng bằng `docker compose down`. Image GPU và cache build có thể cần nhiều GB trên phân vùng Docker; kiểm tra dung lượng trước lần build đầu. Image web dùng Next standalone và chạy dưới user `node`.
 
 ```bash
-uv sync --locked --extra dev --extra inference --extra api
+uv sync --locked --extra dev --extra api
+uv run --no-sync python scripts/setup_dicow.py
 uv run --no-sync meeting-asr doctor
 uv run --no-sync meeting-asr run data/real/meeting.wav --out results/demo
 uv run --no-sync meeting-asr serve
@@ -67,7 +72,7 @@ uv run --no-sync meeting-asr simulate data/raw/pilot_001.json --out data/simulat
 ## Cấu trúc
 
 - `src/meeting_asr/`: pipeline, backend model, confidence, API và công cụ nghiên cứu.
-- `configs/`: tham số chạy. `configs/default.yaml` là cấu hình chuẩn.
+- `configs/`: tham số chạy. `configs/default.yaml` là DiCoW mặc định; `configs/baseline-phowhisper.yaml` lưu hệ cascaded cũ.
 - `tests/`: kiểm thử định dạng, M1, bộ sinh hội thoại và thước đo.
 - `web/`: website Next.js, TypeScript/Tailwind và kiểm thử Playwright.
 - `data/`, `.cache/`, `results/`: dữ liệu và artifact local, phần lớn không theo dõi Git.
@@ -75,7 +80,9 @@ uv run --no-sync meeting-asr simulate data/raw/pilot_001.json --out data/simulat
 
 Đồ án dùng mô hình pretrained cho inference, không fine-tune trong phạm vi hiện tại. Colab Pro là môi trường chạy thí nghiệm; bản demo trước hết chạy local, EC2 GPU chỉ là phương án triển khai sau khi kiểm tra quota và chi phí.
 
-## Hiệu chỉnh trên dev và kiểm tra lại pilot
+## Baseline cũ và thí nghiệm trong báo cáo
+
+Để tái chạy hệ cũ, cài `uv sync --locked --extra dev --extra api --extra inference`, rồi truyền `--config configs/baseline-phowhisper.yaml` (Pyannote) hoặc `--config configs/improved-ecapa.yaml` (ECAPA). Hai cấu hình này không được dùng cho server mặc định hoặc image Docker chính.
 
 Lần hiệu chỉnh ngày 02/10/2026 lưu bảng trước/sau, cấu hình và transcript mới trong `results/improvement-2026-10-02/`. Kết quả khuyến nghị ở `recommended/report.md`: ECAPA giảm WER 18,47% → 17,73%, cpWER 27,57% → 26,96% trên cùng 18 audio pilot. Chỉ có 2 hội thoại gốc, nên đây là kết quả thăm dò. Các thử nghiệm đổi clustering và calibration chưa tổng quát tốt cũng được giữ đầy đủ trong báo cáo riêng.
 
@@ -85,6 +92,6 @@ Chạy phương án cải thiện ASR bằng cấu hình `configs/improved-ecapa
 uv run --no-sync meeting-asr run /duong/dan/meeting.wav --config configs/improved-ecapa.yaml --out results/improved-demo
 ```
 
-`diarization.ecapa.clean_clustering` cho phép tạo cụm từ cửa sổ đủ dài, không có chồng lấn do detector dự đoán, rồi gán các cửa sổ còn lại vào cụm. `asr.merge_same_speaker_gap` nối các mảnh gần nhau của cùng người nói trước khi phiên âm nếu không có người khác nói trong khoảng nghỉ; RTTM dự đoán gốc vẫn dùng để tính DER. Cả hai tùy chọn mặc định tắt để tái lập baseline.
+`diarization.ecapa.clean_clustering` cho phép tạo cụm từ cửa sổ đủ dài, không có chồng lấn do detector dự đoán, rồi gán các cửa sổ còn lại vào cụm. `asr.merge_same_speaker_gap` nối các mảnh gần nhau của cùng người nói trước khi phiên âm nếu không có người khác nói trong khoảng nghỉ; RTTM dự đoán gốc vẫn dùng để tính DER. Các tùy chọn này thuộc baseline cũ; profile Pyannote giữ chúng tắt để tái lập thí nghiệm.
 
 Trong manifest thí nghiệm có thể đặt riêng `oracle_rttm` cho ngữ cảnh ASR. `reference_rttm` vẫn là nhãn speech dùng để chấm DER. Các nhãn speech tự động đề xuất phải được nghe kiểm tra trước khi dùng làm kết quả chính thức.

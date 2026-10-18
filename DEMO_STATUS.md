@@ -1,5 +1,7 @@
 # Kết quả kiểm tra local — 2026-09-26
 
+> Tài liệu này giữ snapshot hệ cũ. Từ 18/10/2026, CLI/API/Docker mặc định dùng DiariZen + DiCoW; xem [DICOW.md](DICOW.md) và [CONTEXT.md](CONTEXT.md). Các số đo bên dưới giữ nguyên phạm vi/cấu hình gốc.
+
 Đây là snapshot lịch sử. Trạng thái mới nhất, gồm nghiệm thu LLM thật và Docker CPU, xem [RELEASE_STATUS.md](RELEASE_STATUS.md).
 
 ## Đã xác nhận

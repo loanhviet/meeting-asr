@@ -1,4 +1,4 @@
-FROM python:3.11-slim AS base
+FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -6,44 +6,47 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/app/.cache/huggingface \
     TORCH_HOME=/app/.cache/torch \
     XDG_CACHE_HOME=/app/.cache/xdg \
-    PATH=/app/.venv/bin:$PATH
+    PATH=/app/.venv/bin:$PATH \
+    MEETING_DICOW_PYTHON=/opt/dicow/venv/bin/python \
+    MEETING_DICOW_UPSTREAM_DIR=/opt/dicow/upstream/DiCoW \
+    MEETING_DICOW_RUNTIME_MANIFEST=/opt/dicow/runtime.json
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ffmpeg libsoxr0 libsndfile1 libgomp1 fonts-dejavu-core \
+        git ffmpeg libsoxr0 libsndfile1 libgomp1 fonts-dejavu-core ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && python -m pip install --no-cache-dir uv==0.12.2
 
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 COPY configs/ ./configs/
-COPY src/ ./src/
-EXPOSE 8000
-CMD ["meeting-asr", "serve", "--host", "0.0.0.0"]
-
-FROM base AS gpu
+COPY requirements/ ./requirements/
+COPY scripts/setup_dicow.py ./scripts/setup_dicow.py
+# The API environment has no legacy ASR models. The pinned author's packages
+# live in /opt so mounting the host's .cache cannot hide the image's runtime.
+# Override XDG_CACHE_HOME for uv during builds so wheel caches stay in the
+# BuildKit mount rather than being copied into the runtime image layers.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --extra api --extra inference --extra demo --extra annotation
+    UV_CACHE_DIR=/root/.cache/uv uv sync --locked --no-dev --no-install-project --extra api --extra demo --extra annotation
+RUN git config --system --add safe.directory /opt/dicow/upstream/DiCoW \
+    && git config --system --add safe.directory /opt/dicow/upstream/DiCoW/DiariZen
+EXPOSE 8000
+CMD ["meeting-asr", "serve", "--host", "0.0.0.0", "--config", "/app/configs/default.yaml"]
 
-FROM base AS cpu
-# Retain locked application dependencies, replacing only Torch/Torchaudio with
-# the matching official CPU wheels and omitting CUDA-only runtime packages.
-RUN --mount=type=cache,target=/root/.cache/uv python - <<'PY'
-import subprocess
-import tomllib
+FROM base AS gpu-runtime
+RUN --mount=type=cache,target=/root/.cache/uv \
+    UV_CACHE_DIR=/root/.cache/uv python scripts/setup_dicow.py --root /opt/dicow --torch-backend cu128
 
-with open("uv.lock", "rb") as handle:
-    packages = tomllib.load(handle)["package"]
-skip = {"torch", "torchaudio", "triton"} | {
-    p["name"] for p in packages if p["name"].startswith("nvidia-")
-}
-command = ["uv", "sync", "--locked", "--no-dev", "--extra", "api",
-           "--extra", "inference", "--extra", "demo", "--extra", "annotation"]
-for name in sorted(skip):
-    command.extend(["--no-install-package", name])
-subprocess.run(command, check=True)
-versions = {p["name"]: p["version"] for p in packages if p["name"] in {"torch", "torchaudio"}}
-subprocess.run(["uv", "pip", "install", "--python", "/app/.venv/bin/python", "--no-deps",
-                "--index-url", "https://download.pytorch.org/whl/cpu",
-                *[f"{name}=={version}" for name, version in sorted(versions.items())]], check=True)
-PY
+FROM base AS cpu-runtime
+RUN --mount=type=cache,target=/root/.cache/uv \
+    UV_CACHE_DIR=/root/.cache/uv python scripts/setup_dicow.py --root /opt/dicow --torch-backend cpu
+
+FROM gpu-runtime AS gpu
+COPY src/ ./src/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    UV_CACHE_DIR=/root/.cache/uv uv pip install --python /app/.venv/bin/python --no-deps -e .
+
+FROM cpu-runtime AS cpu
+COPY src/ ./src/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    UV_CACHE_DIR=/root/.cache/uv uv pip install --python /app/.venv/bin/python --no-deps -e .

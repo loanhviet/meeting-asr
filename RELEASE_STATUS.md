@@ -1,5 +1,7 @@
 # Trạng thái bàn giao — 06/10/2026
 
+> Tài liệu này giữ snapshot hệ cũ. Từ 18/10/2026, CLI/API/Docker mặc định dùng DiariZen + DiCoW; xem [DICOW.md](DICOW.md) và [CONTEXT.md](CONTEXT.md). Các số đo bên dưới giữ nguyên phạm vi/cấu hình gốc.
+
 Code cho luồng xử lý, soát transcript, biên bản/hỏi đáp và công cụ nghiên cứu đã triển khai. Đã chạy model và LLM thật trên dữ liệu local; nghiệm thu nhãn speech, dữ liệu đủ thời lượng và cuộc họp người thật vẫn còn mở. Quy trình tiếp tục: [ACCEPTANCE.md](ACCEPTANCE.md).
 
 ## Phần đã hoàn tất trong repo

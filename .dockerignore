@@ -10,8 +10,10 @@ results
 dist
 docs
 notebooks
-scripts
+scripts/*
+!scripts/setup_dicow.py
 tests
 web
+document
 **/__pycache__
 **/*.pyc

@@ -20,15 +20,24 @@ from meeting_asr.settings import config_hash
 def benchmark(audio, config, out, repetitions=1, cached=False, log_path=None):
     if repetitions < 1:
         raise ValueError("repetitions must be positive")
-    try:
-        import torch
-    except ImportError as exc:
-        raise RuntimeError("Install inference dependencies before benchmarking") from exc
+    dicow = config["asr"].get("engine") == "dicow"
+    torch = None
+    if not dicow:
+        try:
+            import torch
+        except ImportError as exc:
+            raise RuntimeError(
+                "Install baseline inference dependencies before benchmarking"
+            ) from exc
     options = copy.deepcopy(config)
     options["llm"]["enabled"] = False
     destination = Path(out)
-    device = resolve_device(options.get("runtime", {}).get("device", "auto"))
-    use_cuda = device.startswith("cuda")
+    device = options.get("runtime", {}).get("device", "auto")
+    if not dicow:
+        device = resolve_device(device)
+    use_cuda = not dicow and device.startswith("cuda")
+    gpu = torch.cuda.get_device_name(0) if use_cuda else None
+    versions = dependency_versions()
     rows = []
     for index in range(repetitions):
         if use_cuda:
@@ -36,6 +45,24 @@ def benchmark(audio, config, out, repetitions=1, cached=False, log_path=None):
         directory = destination / f"run_{index:03d}"
         run_pipeline(audio, options, directory, no_cache=not cached)
         run = json.loads((directory / "run.json").read_text())["result"]
+        peak = torch.cuda.max_memory_allocated() / 1024**3 if use_cuda else None
+        if dicow:
+            provenance = json.loads((directory / "dicow-provenance.json").read_text())
+            device = provenance["device"]
+            gpu = provenance.get("gpu")
+            versions = provenance["packages"]
+            # DiCoW runs in another interpreter. Parent-process CUDA statistics
+            # do not measure inference, and cached provenance is not a fresh peak.
+            fresh = not any(stage["cache_hit"] for stage in run["stages"] if stage["stage"] == "M3")
+            peak = (
+                max(
+                    provenance["diarization_peak_cuda_allocated_bytes"],
+                    provenance["asr_peak_cuda_allocated_bytes"],
+                )
+                / 1024**3
+                if device.startswith("cuda") and fresh
+                else None
+            )
         rows.append(
             {
                 "run": index,
@@ -45,9 +72,7 @@ def benchmark(audio, config, out, repetitions=1, cached=False, log_path=None):
                 "stages": run["stages"],
                 "stage_elapsed_sec": run.get("stage_elapsed_sec", {}),
                 "audio_duration_sec": run.get("audio_duration_sec"),
-                "peak_cuda_allocated_gib": torch.cuda.max_memory_allocated() / 1024**3
-                if use_cuda
-                else None,
+                "peak_cuda_allocated_gib": peak,
             }
         )
     payload = {
@@ -57,9 +82,9 @@ def benchmark(audio, config, out, repetitions=1, cached=False, log_path=None):
         "device": device,
         "platform": platform.platform(),
         "cpu": platform.processor(),
-        "versions": dependency_versions(),
+        "versions": versions,
         "runs": rows,
-        "gpu": torch.cuda.get_device_name(0) if use_cuda else None,
+        "gpu": gpu,
     }
     _atomic_text(destination / "benchmark.json", json.dumps(payload, indent=2))
     stamp = datetime.now(UTC).strftime("%Y-%m-%d_%H%M%S")

@@ -53,7 +53,7 @@ def main():
     args = parser.parse_args()
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    config = load_config()
+    config = load_config("configs/baseline-phowhisper.yaml")
     config["asr"]["batch_size"] = 1
     config["llm"]["enabled"] = False
     manifest = experiment_manifest(args.manifest)

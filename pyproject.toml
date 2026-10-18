@@ -46,6 +46,8 @@ packages = ["src/meeting_asr"]
 [tool.hatch.build.targets.wheel.force-include]
 "configs/default.yaml" = "meeting_asr/configs/default.yaml"
 "configs/improved-ecapa.yaml" = "meeting_asr/configs/improved-ecapa.yaml"
+"configs/dicow-author.yaml" = "meeting_asr/configs/dicow-author.yaml"
+"configs/baseline-phowhisper.yaml" = "meeting_asr/configs/baseline-phowhisper.yaml"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
