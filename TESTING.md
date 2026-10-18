@@ -1,21 +1,24 @@
 # Chạy và nghiệm thu
 
-Trạng thái ngày 06/10/2026: [RELEASE_STATUS.md](RELEASE_STATUS.md). Các bước mới cho nhãn speech/ngữ cảnh ASR, cổng dữ liệu và nghiệm thu LLM/họp thật nằm trong [ACCEPTANCE.md](ACCEPTANCE.md); tài liệu này giữ các lệnh setup và kiểm tra luồng nền tảng.
+CLI/API/Docker hiện mặc định chạy DiariZen + DiCoW; xem [DICOW.md](DICOW.md). Hệ Pyannote/ECAPA + PhoWhisper chỉ chạy bằng cấu hình đối chứng tường minh. Snapshot hệ cũ ngày 06/10/2026: [RELEASE_STATUS.md](RELEASE_STATUS.md). Các bước mới cho nhãn speech/ngữ cảnh ASR, cổng dữ liệu và nghiệm thu LLM/họp thật nằm trong [ACCEPTANCE.md](ACCEPTANCE.md); tài liệu này giữ các lệnh setup và kiểm tra luồng nền tảng.
 
 ## 1. Môi trường local
 
 ```bash
-uv sync --locked --extra dev --extra inference --extra api
+uv sync --locked --extra dev --extra api
+uv run --no-sync python scripts/setup_dicow.py
 uv run --no-sync meeting-asr doctor
 ```
 
-Tạo `.env` từ nội dung `.env.example`, điền token trên máy. `.env` được đọc tự động; biến môi trường đã có sẽ được ưu tiên. Không đưa khóa vào YAML, Git hoặc browser. Với RTX 3050 4 GB, bắt đầu bằng `MEETING_ASR_BATCH_SIZE=1`. Model chạy từng stage và được giải phóng trước stage tiếp; vẫn cần đo VRAM trên audio thật. CPU dùng `MEETING_DEVICE=cpu`. `asr.collect_no_speech` mặc định tắt để khỏi chạy thêm một lượt encoder. Chỉ bật trên một file pilot; nếu còn VRAM và tín hiệu đổi được lượt gắn cờ thì mới bật cho cả bộ.
+Tạo `.env` từ nội dung `.env.example`, điền token trên máy. `.env` được đọc tự động; biến môi trường đã có sẽ được ưu tiên. Không đưa khóa vào YAML, Git hoặc browser. Với RTX 3050 4 GB, bắt đầu bằng `MEETING_ASR_BATCH_SIZE=1`. Model chạy từng stage và được giải phóng trước stage tiếp; vẫn cần đo VRAM trên audio thật. CPU dùng `MEETING_DEVICE=cpu`. DiCoW decode từng target, batch 1; confidence chưa calibration vì thiếu một số tín hiệu. `asr.collect_no_speech` là tùy chọn của baseline PhoWhisper.
 
-Để dùng backend theo spec, đăng nhập và chấp nhận điều kiện của [speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) và [segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0). Token cần quyền đọc các model này. Download lần đầu cần mạng; không tự thay model khi quyền truy cập thất bại.
+DiCoW dùng `BUT-FIT/DiCoW_v3_MLC`, DiariZen đa miền và WeSpeaker với revision đã pin; chuẩn bị token có quyền truy cập các checkpoint. Không tự đổi model khi tải thất bại.
+
+Chỉ khi tái chạy baseline cũ, cài `uv sync --locked --extra dev --extra api --extra inference`, rồi đăng nhập và chấp nhận điều kiện của [speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) và [segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0). Token cần quyền đọc các model này. Download lần đầu cần mạng; không tự thay model khi quyền truy cập thất bại.
 
 ```bash
 uv run --no-sync meeting-asr run data/real/meeting.wav --out results/local-demo
-uv run --no-sync meeting-asr run data/real/meeting.wav --out results/local-ecapa --backend ecapa
+uv run --no-sync meeting-asr run data/real/meeting.wav --config configs/improved-ecapa.yaml --out results/local-ecapa
 uv run --no-sync meeting-asr benchmark data/real/meeting.wav --out results/benchmark
 ```
 
@@ -26,7 +29,7 @@ Kết quả mỗi lần chạy có RTTM, diarization signals, transcript thô, b
 ### Audio demo tổng hợp (không cần tự thu âm)
 
 ```bash
-uv sync --locked --extra dev --extra inference --extra api --extra demo
+uv sync --locked --extra dev --extra api --extra demo
 uv run --no-sync meeting-asr demo-audio
 ```
 

@@ -177,6 +177,7 @@ def main():
                 "src/meeting_asr/dicow.py",
                 "src/meeting_asr/dicow_runner.py",
                 "configs/default.yaml",
+                "configs/baseline-phowhisper.yaml",
                 "configs/dicow-author.yaml",
                 "scripts/score_dicow_quality.py",
             ]

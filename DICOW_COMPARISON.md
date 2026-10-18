@@ -167,7 +167,7 @@ Chấm lại artifact (không chạy model, không upload web):
 Ví dụ chạy lại một mẫu; đổi config thành `configs/dicow-author.yaml` để chạy hệ mới, thêm `--oracle-rttm` trỏ tới `.oracle.rttm` tương ứng cho đối chứng:
 
 ```bash
-MEETING_LLM_ENABLED=false MEETING_ASR_BATCH_SIZE=1 .venv/bin/meeting-asr run data/simulated/pilot-speech/sim_ovl0_clean_spk3_001.wav --config configs/default.yaml --out results/dicow-author/recheck --no-cache
+MEETING_LLM_ENABLED=false MEETING_ASR_BATCH_SIZE=1 .venv/bin/meeting-asr run data/simulated/pilot-speech/sim_ovl0_clean_spk3_001.wav --config configs/baseline-phowhisper.yaml --out results/dicow-author/recheck --no-cache
 ```
 
-Validation implementation: 126 tests Python pass, Ruff pass; package source/wheel build thành công. Những kiểm tra code này không thay thế kiểm định accuracy model. Branch thử nghiệm riêng, chưa merge vào main và chưa fine-tune thêm tiếng Việt.
+Validation implementation: 126 tests Python pass, Ruff pass; package source/wheel build thành công. Những kiểm tra code này không thay thế kiểm định accuracy model. Snapshot thí nghiệm ngày 12/10, chưa fine-tune thêm tiếng Việt. Từ 18/10, luồng mặc định được chuyển sang DiCoW; hệ cũ tái chạy bằng `configs/baseline-phowhisper.yaml`. Các số liệu trên vẫn là kết quả của cấu hình đã ghi trong artifact gốc.

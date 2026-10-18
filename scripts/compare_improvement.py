@@ -49,7 +49,9 @@ def save(path, value):
 
 
 def effective_config():
-    config = load_config(CONFIG_PATH) if CONFIG_PATH else load_config()
+    config = (
+        load_config(CONFIG_PATH) if CONFIG_PATH else load_config("configs/baseline-phowhisper.yaml")
+    )
     config["asr"]["batch_size"] = 1
     config["llm"]["enabled"] = False
     return config
@@ -102,7 +104,12 @@ def infer(session, config, destination, decoder, precomputed=None):
         write_rttm(
             destination / "diarization.rttm", Path(session["audio"]).stem, diarization.segments
         )
-        utterances = transcribe(audio, diarization, decoder=decoder, **config["asr"])
+        utterances = transcribe(
+            audio,
+            diarization,
+            decoder=decoder,
+            **{k: v for k, v in config["asr"].items() if k != "engine"},
+        )
         document = TranscriptDocument(
             Path(session["audio"]).stem, audio.duration, audio.sr, config_hash(config), utterances
         )

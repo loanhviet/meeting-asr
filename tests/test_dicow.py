@@ -51,8 +51,8 @@ def test_joint_cache_preserves_raw_diarization_and_invalidates_model_revision(
     tmp_path, monkeypatch
 ):
     config = copy.deepcopy(load_config())
-    config["asr"]["engine"] = "dicow"
-    config["diarization"]["backend"] = "diarizen"
+    assert config["asr"]["engine"] == "dicow"
+    assert config["diarization"]["backend"] == "diarizen"
     config["dicow"] = {"model_revision": "fixture-one"}
     config["llm"]["enabled"] = False
     config["paths"]["cache_dir"] = str(tmp_path / "cache")

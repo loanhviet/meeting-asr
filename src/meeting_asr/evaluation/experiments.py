@@ -128,7 +128,12 @@ def experiment_log_rows(rows, config, created=None, commit=None):
     return logged
 
 
-def run_experiments(manifest, config, out, backends=("pyannote", "ecapa"), log_path=None):
+def run_experiments(manifest, config, out, backends=None, log_path=None):
+    dicow = config["asr"].get("engine") == "dicow"
+    if backends is None:
+        backends = ("diarizen",) if dicow else ("pyannote", "ecapa")
+    if not backends or any((backend == "diarizen") != dicow for backend in backends):
+        raise ValueError("Experiment backends must match the configured ASR engine")
     if config["asr"].get("masking", "none") != "none":
         raise ValueError("RQ2 requires masking=none for oracle and cascaded")
     payload = experiment_manifest(manifest)

@@ -50,6 +50,7 @@ paths:
 dicow:
   python: .cache/dicow/venv/bin/python
   upstream_dir: .cache/dicow/upstream/DiCoW
+  runtime_manifest: .cache/dicow/runtime.json
   model_revision: 99c64e8dc409a158816e808a1ee556cdfd0af51c
   diarization_revision: 6285693ddd5b38e8229acb93f864f3d04a82bee1
   embedding_revision: 837717ddb9ff5507820346191109dc79c958d614

@@ -116,6 +116,12 @@ def _run_prepare(args: argparse.Namespace) -> int:
 def _run_pipeline(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     if args.backend:
+        engine = config["asr"].get("engine", "whisper")
+        if (engine == "dicow") != (args.backend == "diarizen"):
+            raise ValueError(
+                "Backend must match the ASR engine; use configs/baseline-phowhisper.yaml "
+                "for pyannote/ecapa, or configs/default.yaml for diarizen"
+            )
         config["diarization"]["backend"] = args.backend
     if args.device:
         config.setdefault("runtime", {})["device"] = args.device
@@ -202,10 +208,8 @@ def _run_calibrate(args):
 
 def _run_doctor(args):
     from meeting_asr.doctor import environment_report
-    from meeting_asr.settings import load_environment
 
-    load_environment()
-    print(json.dumps(environment_report(), ensure_ascii=False, indent=2))
+    print(json.dumps(environment_report(load_config(args.config)), ensure_ascii=False, indent=2))
     return 0
 
 
@@ -216,7 +220,12 @@ def _run_serve(args):
         from meeting_asr.api import create_app
     except ImportError as exc:
         raise RuntimeError("Install API dependencies: uv sync --extra api") from exc
-    uvicorn.run(create_app(load_config(args.config)), host=args.host, port=args.port)
+    config = load_config(args.config)
+    if config["asr"].get("engine") == "dicow":
+        from meeting_asr.dicow import author_runtime
+
+        author_runtime(config)
+    uvicorn.run(create_app(config), host=args.host, port=args.port)
     return 0
 
 
@@ -418,6 +427,7 @@ def main(argv: list[str] | None = None) -> int:
     doctor_parser = subcommands.add_parser(
         "doctor", help="inspect environment without exposing keys"
     )
+    doctor_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     doctor_parser.set_defaults(handler=_run_doctor)
 
     demo_parser = subcommands.add_parser(

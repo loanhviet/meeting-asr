@@ -11,6 +11,26 @@ import time
 from pathlib import Path
 
 
+def runtime_information():
+    """Inspect the actual inference interpreter without downloading model weights."""
+    import torch
+    from huggingface_hub import get_token
+
+    gpu = None
+    if torch.cuda.is_available():
+        props = torch.cuda.get_device_properties(0)
+        gpu = {"name": props.name, "memory_gib": round(props.total_memory / 1024**3, 2)}
+    return {
+        "python": sys.version.split()[0],
+        "packages": {
+            name: importlib.metadata.version(name)
+            for name in ("torch", "torchaudio", "transformers", "pyannote.audio", "speechbrain")
+        },
+        "gpu": gpu,
+        "hf_token_present": bool(get_token()),
+    }
+
+
 def event(stage, progress):
     print("MEETING_DICOW_EVENT " + json.dumps({"stage": stage, "progress": progress}), flush=True)
 
@@ -101,6 +121,7 @@ def run(request):
         revision=request["model_revision"],
         trust_remote_code=True,
         torch_dtype=dtype,
+        low_cpu_mem_usage=True,
     ).eval()
     if getattr(model.config, "mt_num_speakers", 1) != 1:
         raise ValueError("Sequential target decoding requires a single-target checkpoint")
@@ -166,6 +187,7 @@ def run(request):
         "embedding_revision": request["embedding_revision"],
         "language": request["language"],
         "device": device,
+        "gpu": torch.cuda.get_device_name(0) if device == "cuda" else None,
         "dtype": str(dtype),
         "num_beams": request["num_beams"],
         "ctc_weight": request["ctc_weight"],
@@ -199,6 +221,11 @@ def run(request):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--request", required=True, type=Path)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--request", type=Path)
+    mode.add_argument("--inspect", action="store_true")
     args = parser.parse_args()
-    run(json.loads(args.request.read_text()))
+    if args.inspect:
+        print(json.dumps(runtime_information()))
+    else:
+        run(json.loads(args.request.read_text()))

@@ -1,48 +1,30 @@
 seed: 42
-
 runtime:
   device: auto
-
 preprocess:
   target_sr: 16000
   normalize: true
   denoise: false
   max_duration_sec: 1800
-
 diarization:
-  backend: pyannote
-  model_name: pyannote/speaker-diarization-3.1
+  backend: diarizen
+  model_name: BUT-FIT/diarizen-wavlm-large-s80-md
   min_speakers: null
   max_speakers: 6
   min_segment_duration: 0.3
-  ecapa:
-    vad_threshold: 0.5
-    window_size: 1.5
-    hop_size: 0.75
-    cluster_threshold: 0.7
-    overlap_detector: pyannote/segmentation-3.0
-
 asr:
-  model_name: vinai/PhoWhisper-medium
+  engine: dicow
+  model_name: BUT-FIT/DiCoW_v3_MLC
   language: vi
-  batch_size: 8
-  max_segment_sec: 28.0
-  min_segment_sec: 0.3
-  boundary_pad: 0.1
-  temperature: 0.0
+  batch_size: 1
   masking: none
-  collect_no_speech: false
-
 postprocess:
   merge_gap: 0.8
   remove_fillers: false
-
 confidence:
   variant: full
   target_coverage: 0.20
-  margin_ref_percentile: 90
-  margin_ref: null  # Set from independent dev calibration; absent signal is omitted.
-  calibration_file: null
+  margin_ref: null
   weights:
     asr: 0.30
     speech: 0.10
@@ -50,7 +32,6 @@ confidence:
     ovl: 0.25
     spk: 0.15
     dur: 0.10
-
 llm:
   enabled: false
   provider: null
@@ -58,14 +39,22 @@ llm:
   base_url: null
   api_key_env: MEETING_LLM_API_KEY
   timeout_sec: 90
-  max_input_chars: 12000
-
 evaluation:
   der_collar: [0.25, 0.0]
   skip_overlap: [true, false]
   turn_wer_threshold: [0.20, 0.30, 0.50]
-
 paths:
   data_dir: ./data
   results_dir: ./results
   cache_dir: ./.cache
+dicow:
+  python: .cache/dicow/venv/bin/python
+  upstream_dir: .cache/dicow/upstream/DiCoW
+  runtime_manifest: .cache/dicow/runtime.json
+  model_revision: 99c64e8dc409a158816e808a1ee556cdfd0af51c
+  diarization_revision: 6285693ddd5b38e8229acb93f864f3d04a82bee1
+  embedding_revision: 837717ddb9ff5507820346191109dc79c958d614
+  diarization_batch_size: 1
+  num_beams: 1
+  # The author's multilingual experiment uses joint CTC decoding for English.
+  ctc_weight: 0.0

@@ -18,11 +18,15 @@ def call(*args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--python", default=sys.executable)
+    parser.add_argument("--root", type=Path, default=ROOT / ".cache/dicow")
+    parser.add_argument("--torch-backend", choices=["cpu", "cu128"])
     args = parser.parse_args()
     uv = shutil.which("uv")
     if not uv:
         parser.error("Install uv first: python -m pip install uv")
-    upstream = ROOT / ".cache/dicow/upstream/DiCoW"
+    runtime_root = args.root.resolve()
+    upstream = runtime_root / "upstream/DiCoW"
+    upstream.parent.mkdir(parents=True, exist_ok=True)
     if not upstream.exists():
         call(
             "git",
@@ -33,7 +37,7 @@ def main():
         )
     call("git", "-C", upstream, "checkout", AUTHOR_COMMIT)
     call("git", "-C", upstream, "submodule", "update", "--init", "--recursive")
-    environment = ROOT / ".cache/dicow/venv"
+    environment = runtime_root / "venv"
     python = environment / "bin/python"
     if not python.exists():
         call(uv, "venv", "--python", args.python, environment)
@@ -43,6 +47,9 @@ def main():
         "install",
         "--python",
         python,
+        "--link-mode",
+        "copy",
+        *(["--torch-backend", args.torch_backend] if args.torch_backend else []),
         "--build-constraint",
         ROOT / "requirements/dicow-build.txt",
         "--constraint",
@@ -62,7 +69,7 @@ def main():
         "python": str(python),
         "packages": installed.splitlines(),
     }
-    (ROOT / ".cache/dicow/runtime.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (runtime_root / "runtime.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("DiCoW runtime ready. Model weights download on the first inference run.")
 
 

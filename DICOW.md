@@ -1,6 +1,6 @@
-# Thử DiariZen + DiCoW theo tác giả
+# DiariZen + DiCoW — luồng xử lý chính
 
-Branch: `feat/dicow-author-pipeline`. Baseline Pyannote/ECAPA + PhoWhisper vẫn chạy bằng cấu hình cũ. Profile mới dùng checkpoint DiCoW đa ngôn ngữ MLC đã được tác giả fine-tune, không tái huấn luyện paper v1.
+CLI, API và Docker mặc định dùng `configs/default.yaml`, tương đương `configs/dicow-author.yaml`. Baseline Pyannote/ECAPA + PhoWhisper chỉ phục vụ thí nghiệm/báo cáo, dùng `configs/baseline-phowhisper.yaml` hoặc `configs/improved-ecapa.yaml` và extra `inference`. Profile mới dùng checkpoint DiCoW đa ngôn ngữ MLC đã được tác giả fine-tune, không tái huấn luyện paper v1.
 
 ## Kiến trúc đang tích hợp
 
@@ -19,11 +19,12 @@ Nguồn:
 ## Cài và chạy
 
 ```bash
-python scripts/setup_dicow.py
+uv sync --locked --extra api
+uv run --no-sync python scripts/setup_dicow.py
 MEETING_LLM_ENABLED=false uv run --no-sync meeting-asr run data/real/haveasip_13_giang_oi/sample_5min.wav --config configs/dicow-author.yaml --out results/dicow-author/haveasip_13
 ```
 
-Môi trường tác giả nằm ở `.cache/dicow/venv`, không thay `.venv` baseline. Runtime cố định Transformers 4.42.4 vì custom code của checkpoint MLC còn dùng `WHISPER_ATTENTION_CLASSES`; API này đã bị bỏ ở bản 4.55 của repo inference hiện tại. Torch/Torchaudio 2.8 và scoped metadata allowlist giữ weights-only loading; không vô hiệu hóa loader toàn process. Cài fork Pyannote cần build constraint `setuptools<81` vì setup cũ còn dùng `pkg_resources`.
+Môi trường tác giả nằm ở `.cache/dicow/venv`, tách khỏi môi trường ứng dụng `.venv`. Khi tái chạy baseline, extra `inference` chỉ được cài vào môi trường ứng dụng local. Runtime cố định Transformers 4.42.4 vì custom code của checkpoint MLC còn dùng `WHISPER_ATTENTION_CLASSES`; API này đã bị bỏ ở bản 4.55 của repo inference hiện tại. Torch/Torchaudio 2.8 và scoped metadata allowlist giữ weights-only loading; không vô hiệu hóa loader toàn process. Cài fork Pyannote cần build constraint `setuptools<81` vì setup cũ còn dùng `pkg_resources`.
 
 `setup_dicow.py` lưu phiên bản package trong `.cache/dicow/runtime.json`. Cache joint M2/M3 phụ thuộc checksum audio, model revisions, cấu hình, upstream commit và manifest runtime. `--no-cache` bỏ cache inference nhưng vẫn dùng trọng số đã tải.
 
@@ -35,6 +36,12 @@ MEETING_LLM_ENABLED=false uv run --no-sync meeting-asr serve --config configs/di
 ```
 
 API dùng result store hiện có; bản upload mới chạy theo profile của server. Job cũ giữ kết quả và bản sửa của nó. LLM tắt trong thí nghiệm ASR này. Credentials vẫn đọc từ `.env` hoặc môi trường, không ghi vào artifact.
+
+## Docker
+
+`docker compose up --build -d` dùng DiCoW CPU; `docker compose -f compose.yaml -f compose.gpu.yaml up --build -d` dùng DiCoW CUDA. Cả hai tự cài runtime tác giả tại `/opt/dicow`, độc lập với `.cache/dicow` trên host. GPU cần NVIDIA Container Toolkit; CPU có thể xử lý chậm. Trọng số được tải/cache ở lần nhận dạng đầu, không nhúng vào image. Token đọc từ `.env` lúc chạy, không đưa vào build.
+
+Kiểm tra `http://127.0.0.1:3000/api/health`: `asr_engine=dicow`, `diarization_backend=diarizen`. `docker compose exec api meeting-asr doctor` kiểm tra interpreter, package và GPU của runtime thật; `dicow_runtime.ready` chưa xác minh quyền tải checkpoint hay accuracy. Server không tự fallback sang baseline khi thiếu runtime/model. Job cũ giữ nguyên kết quả và bản sửa; upload thành job mới để nhận dạng lại.
 
 ## Artifact và so sánh
 
@@ -55,6 +62,12 @@ Script kiểm tra hai lượt dùng cùng audio. WER/cpWER/DER để null khi ch
 - Token log probability và cluster margin không được pipeline tác giả xuất. Adapter để null; confidence còn dùng những tín hiệu sẵn có như độ dài, lặp và overlap, chưa hiệu chỉnh cho DiCoW. Không so sánh RQ3 như hai hệ có cùng đủ tín hiệu.
 - Nhận đúng số người chưa chứng minh đúng text hay gán người. Đã có WER/cpWER thăm dò trên pilot VIVOS ghép; chưa có số đo được xác nhận cho ba đoạn audio thực tế hoặc DER với nhãn speech đã nghe duyệt.
 - Chưa fine-tune tiếng Việt mới. Khi cần, dùng [training repo](https://github.com/BUTSpeechFIT/TS-ASR-Whisper), dữ liệu audio/text/speaker theo thời gian và split độc lập; không tự nâng nhãn model lên ground truth.
+
+## Kiểm chứng chuyển mặc định — 18/10/2026
+
+132 tests Python, Ruff check/format, wheel/sdist, web typecheck/format/build và 11 Playwright tests đạt. Đã chạy inference thật bằng cấu hình mặc định trên GPU host và qua web/API Docker CPU với đoạn 12 giây, LLM tắt, inference M2/M3 cache miss. Docker trả transcript hai người nói, lưu sửa bền vững, giữ bản gốc và export Markdown/SRT/PDF thành công. Artifact local nằm ở `results/docker-dicow-verification/`; đây là smoke tích hợp, không phải đánh giá accuracy hoặc benchmark đại diện cuộc họp.
+
+Máy kiểm thử chưa cài NVIDIA Container Toolkit, nên chưa nghiệm thu inference CUDA bên trong container. Chạy CUDA trên host không thay thế kiểm chứng GPU container.
 
 ## Colab
 

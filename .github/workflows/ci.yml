@@ -45,6 +45,8 @@ jobs:
       - run: docker compose config --quiet && docker compose -f compose.yaml -f compose.gpu.yaml config --quiet
       - run: DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose up --build -d --wait
       - run: curl --fail http://127.0.0.1:3000/api/health && curl --fail --output /dev/null http://127.0.0.1:3000/
-      - run: docker compose exec -T api meeting-asr doctor
+      - run: |
+          docker compose exec -T api meeting-asr doctor
+          docker compose exec -T api python -c 'from meeting_asr.doctor import environment_report; r = environment_report(); assert r["asr_engine"] == "dicow" and r["diarization_backend"] == "diarizen" and r["dicow_runtime"]["ready"], r'
       - if: always()
         run: docker compose logs --tail=50 && docker compose down

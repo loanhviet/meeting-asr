@@ -40,6 +40,11 @@ def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
         value.setdefault("runtime", {})["device"] = os.environ["MEETING_DEVICE"]
     if os.getenv("MEETING_ASR_BATCH_SIZE"):
         value["asr"]["batch_size"] = int(os.environ["MEETING_ASR_BATCH_SIZE"])
+    if value.get("asr", {}).get("engine") == "dicow":
+        for key in ("python", "upstream_dir", "runtime_manifest"):
+            override = os.getenv(f"MEETING_DICOW_{key.upper()}")
+            if override:
+                value.setdefault("dicow", {})[key] = override
     calibration_path = os.getenv("MEETING_CONFIDENCE_CALIBRATION") or value.get(
         "confidence", {}
     ).get("calibration_file")

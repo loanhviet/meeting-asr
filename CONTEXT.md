@@ -1,5 +1,13 @@
 # Context để tiếp tục triển khai — 12/10/2026
 
+## Quyết định mới nhất — chuyển mặc định sang DiCoW (18/10/2026)
+
+Người dùng yêu cầu CLI, API và Docker chuyển hoàn toàn sang DiariZen + DiCoW. `configs/default.yaml` nay là DiCoW; hệ cũ được giữ ở `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` để làm thí nghiệm trong báo cáo. Các câu “default vẫn là baseline” ở snapshot bên dưới là lịch sử, không còn mô tả cách chạy hiện tại.
+
+Docker đóng gói runtime tác giả tại `/opt/dicow`; local tiếp tục dùng `.cache/dicow`. Cài/check runtime, benchmark và tài liệu kiến trúc được cập nhật theo luồng chính. Chưa phát sinh kết luận accuracy mới hoặc fine-tune từ việc đổi mặc định.
+
+Kiểm chứng sau chuyển mặc định: 132 tests Python và Ruff đạt; wheel/sdist chứa cấu hình mới lẫn baseline; web typecheck/format/build và 11 Playwright tests đạt. Đã chạy thật đoạn 12 giây qua cấu hình mặc định trên GPU host và qua web Docker CPU (LLM tắt, inference M2/M3 cache miss), kiểm tra transcript, lưu sửa, bản gốc và export MD/SRT/PDF. Artifact ở `results/docker-dicow-verification/`, job store kiểm thử riêng với `results/jobs` cũ. Máy chưa có NVIDIA Container Toolkit nên chưa kiểm chứng inference CUDA trong container; không gọi smoke này là nghiệm thu accuracy.
+
 ## Cập nhật bàn giao — 18/10/2026
 
 Code, cấu hình, test, notebook và tài liệu DiCoW được bàn giao qua branch `feat/dicow-author-pipeline` trên remote `origin`. Các ghi chú “chưa commit/push” bên dưới mô tả snapshot ngày 12/10; dùng `git status` và `git log` để kiểm tra trạng thái hiện tại. Fix proxy upload web được lưu trong commit riêng.
