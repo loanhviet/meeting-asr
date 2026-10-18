@@ -108,6 +108,9 @@ def create_app(
             "status": "ok",
             "llm_enabled": bool(config["llm"]["enabled"]),
             "ask_enabled": bool(config["llm"]["enabled"]),
+            "asr_engine": config["asr"].get("engine", "whisper"),
+            "asr_model": config["asr"]["model_name"],
+            "diarization_backend": config["diarization"]["backend"],
         }
 
     @app.get("/api/jobs")

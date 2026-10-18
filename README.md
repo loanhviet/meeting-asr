@@ -6,6 +6,10 @@ Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm
 
 Trạng thái hiện tại và số đo đã kiểm tra: [RELEASE_STATUS.md](RELEASE_STATUS.md). Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](ACCEPTANCE.md). Có [sơ đồ kiến trúc](ARCHITECTURE.md) và [README tiếng Anh](README.en.md).
 
+Branch thử nghiệm có thêm **DiariZen + DiCoW theo tác giả**, dùng checkpoint đa ngôn ngữ, STNO/FDDT và timestamp model sinh. Cài runtime riêng và bật profile `configs/dicow-author.yaml`; xem [DICOW.md](DICOW.md) và [so sánh chất lượng thực nghiệm](DICOW_COMPARISON.md). Baseline mặc định vẫn dùng PhoWhisper.
+
+Hướng phát triển đã thống nhất: DiCoW làm hướng nghiên cứu chính, giữ hệ cũ làm baseline. Đọc [CONTEXT.md](CONTEXT.md) để tiếp tục từ quyết định, kết quả và công việc còn lại của phiên 12/10/2026.
+
 ## Chạy bằng Docker
 
 Cần Docker Engine và Docker Compose. Tạo `.env` từ `.env.example`, điền `HF_TOKEN` đã được cấp quyền cho các model Pyannote trước khi xử lý audio. Lần đầu build và tải model cần mạng, có thể tốn nhiều dung lượng và thời gian.

@@ -168,8 +168,16 @@ def _run_experiments(args):
         )
         if not audit["ready"]:
             raise ValueError("experiment readiness failed: " + "; ".join(audit["issues"]))
-    backends = ("pyannote", "ecapa") if args.backend == "all" else (args.backend,)
-    rows = run_experiments(args.manifest, load_config(args.config), args.out, backends)
+    config = load_config(args.config)
+    if config["asr"].get("engine", "whisper") == "dicow":
+        if args.backend not in {"all", "diarizen"}:
+            raise ValueError("DiCoW experiments require --backend diarizen")
+        backends = ("diarizen",)
+    else:
+        if args.backend == "diarizen":
+            raise ValueError("DiariZen experiments require the DiCoW author config")
+        backends = ("pyannote", "ecapa") if args.backend == "all" else (args.backend,)
+    rows = run_experiments(args.manifest, config, args.out, backends)
     print(json.dumps({"rows": len(rows), "out": args.out}))
     return 0
 
@@ -260,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("audio")
     run_parser.add_argument("--out", required=True)
     run_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    run_parser.add_argument("--backend", choices=["pyannote", "ecapa"])
+    run_parser.add_argument("--backend", choices=["pyannote", "ecapa", "diarizen"])
     run_parser.add_argument("--device", choices=["auto", "cpu", "cuda"])
     run_parser.add_argument("--batch-size", type=int)
     run_parser.add_argument("--oracle-rttm")
@@ -382,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:
     experiments_parser.add_argument("manifest")
     experiments_parser.add_argument("--out", required=True)
     experiments_parser.add_argument(
-        "--backend", choices=["all", "pyannote", "ecapa"], default="all"
+        "--backend", choices=["all", "pyannote", "ecapa", "diarizen"], default="all"
     )
     experiments_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     experiments_parser.add_argument("--require-verified-speech", action="store_true")
