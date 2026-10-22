@@ -497,6 +497,45 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if report["ready"] else 2
 
     llm_parser.set_defaults(handler=run_llm_check)
+    correction_parser = subcommands.add_parser(
+        "correct-transcript", help="propose bounded LLM text corrections in a separate artifact"
+    )
+    correction_parser.add_argument("transcript")
+    correction_parser.add_argument("--api-key-csv", required=True)
+    correction_parser.add_argument("--model", default="kimi-k3")
+    correction_parser.add_argument("--out", required=True)
+    correction_parser.add_argument("--context", default="")
+    correction_parser.add_argument("--glossary", help="JSON array of independently supplied terms")
+    correction_parser.add_argument("--cache-dir")
+    correction_parser.add_argument("--max-output-tokens", type=int, default=4096)
+
+    def run_correction(args):
+        from meeting_asr.correction import KimiProvider, correct_document
+
+        provider = KimiProvider.from_csv(
+            args.api_key_csv, model=args.model, max_output_tokens=args.max_output_tokens
+        )
+        glossary = json.loads(Path(args.glossary).read_text()) if args.glossary else []
+        result = correct_document(
+            args.transcript,
+            args.out,
+            provider,
+            context=args.context,
+            glossary=glossary,
+            cache_dir=args.cache_dir,
+        )
+        print(
+            json.dumps(
+                {
+                    "turns": len(result["suggestions"]),
+                    "suggestions": sum(bool(s["edits"]) for s in result["suggestions"]),
+                    "out": str(Path(args.out).resolve()),
+                }
+            )
+        )
+        return 0
+
+    correction_parser.set_defaults(handler=run_correction)
     acceptance_parser = subcommands.add_parser(
         "evaluate-meetings", help="evaluate supplied meetings and LLM outputs"
     )

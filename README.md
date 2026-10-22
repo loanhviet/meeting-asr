@@ -95,3 +95,15 @@ uv run --no-sync meeting-asr run /duong/dan/meeting.wav --config configs/improve
 `diarization.ecapa.clean_clustering` cho phép tạo cụm từ cửa sổ đủ dài, không có chồng lấn do detector dự đoán, rồi gán các cửa sổ còn lại vào cụm. `asr.merge_same_speaker_gap` nối các mảnh gần nhau của cùng người nói trước khi phiên âm nếu không có người khác nói trong khoảng nghỉ; RTTM dự đoán gốc vẫn dùng để tính DER. Các tùy chọn này thuộc baseline cũ; profile Pyannote giữ chúng tắt để tái lập thí nghiệm.
 
 Trong manifest thí nghiệm có thể đặt riêng `oracle_rttm` cho ngữ cảnh ASR. `reference_rttm` vẫn là nhãn speech dùng để chấm DER. Các nhãn speech tự động đề xuất phải được nghe kiểm tra trước khi dùng làm kết quả chính thức.
+
+## Gợi ý hiệu chỉnh transcript theo ngữ cảnh
+
+`correct-transcript` gọi Kimi K3 để đề xuất sửa các cụm ngắn, kiểm tra patch bằng code và lưu kết quả review vào file riêng. Nhận credential từ CSV export của Alibaba Cloud:
+
+```bash
+uv run --no-sync meeting-asr correct-transcript results/demo/transcript.json \
+  --api-key-csv /duong/dan/api-key.csv --model kimi-k3 \
+  --out results/demo/correction-suggestions.json
+```
+
+Xem [hướng dẫn hiệu chỉnh và phép so sánh dev](document/LLM_CORRECTION_2026-10-22.md). Gợi ý giữ hash của text nguồn và cần người nghe kiểm tra trước khi chấp nhận.
