@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -110,6 +111,27 @@ def resolve_evidence(payload: dict, turns) -> dict:
     return result
 
 
+class LLMRequestError(RuntimeError):
+    """Safe provider failure usable by diagnostics without exposing response bodies."""
+
+    def __init__(self, message, *, status_code=None, provider_code=None, category="request_failed"):
+        super().__init__(message)
+        self.status_code = status_code
+        self.provider_code = provider_code
+        self.category = category
+
+
+def _provider_error_code(body):
+    try:
+        payload = json.loads(body)
+        error = payload.get("error", payload)
+        code = error.get("code") if isinstance(error, dict) else None
+    except (ValueError, TypeError, AttributeError):
+        return None
+    # Codes, unlike provider messages, should never contain transcript text or keys.
+    return code if isinstance(code, str) and re.fullmatch(r"[A-Za-z0-9_.:-]{1,100}", code) else None
+
+
 class HTTPProvider:
     def __init__(
         self, provider: str, base_url: str, api_key: str | None, timeout=90, max_output_tokens=1800
@@ -154,10 +176,24 @@ class HTTPProvider:
             with urlopen(request, timeout=self.timeout) as response:
                 result = json.load(response)
         except HTTPError as exc:
-            # Do not echo provider response bodies, which can contain private transcript data.
-            raise RuntimeError(f"LLM request failed with HTTP {exc.code}") from exc
+            # Classify the status; keep provider messages, headers and request bodies private.
+            code = _provider_error_code(exc.read(65536))
+            category = {
+                401: "authentication_failed",
+                403: "permission_denied",
+                404: "endpoint_or_model_not_found",
+                429: "rate_or_quota_limit",
+            }.get(exc.code, "provider_unavailable" if exc.code >= 500 else "request_rejected")
+            raise LLMRequestError(
+                f"LLM request failed with HTTP {exc.code}",
+                status_code=exc.code,
+                provider_code=code,
+                category=category,
+            ) from None
         except (URLError, TimeoutError, OSError) as exc:
-            raise RuntimeError("LLM endpoint is unreachable") from exc
+            raise LLMRequestError(
+                "LLM endpoint is unreachable", category="endpoint_unreachable"
+            ) from exc
         if self.provider == "claude":
             return "".join(block["text"] for block in result["content"] if block["type"] == "text")
         return result["choices"][0]["message"]["content"]

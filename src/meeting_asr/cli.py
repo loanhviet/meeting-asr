@@ -485,14 +485,27 @@ def main(argv: list[str] | None = None) -> int:
 
     suite_parser.set_defaults(handler=run_suite)
     llm_parser = subcommands.add_parser(
-        "llm-check", help="check provider configuration without requests"
+        "llm-check", help="check configuration, or send one request with --probe"
     )
     llm_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    llm_parser.add_argument(
+        "--probe", action="store_true", help="send one short configured-provider request"
+    )
+    llm_parser.add_argument("--out", type=Path, help="write the credential-free readiness report")
 
     def run_llm_check(args):
         from meeting_asr.evaluation.acceptance import llm_readiness
 
-        report = llm_readiness(load_config(args.config)["llm"])
+        options = load_config(args.config)["llm"]
+        if args.probe:
+            from meeting_asr.doctor import probe_llm
+
+            report = probe_llm(options)
+        else:
+            report = llm_readiness(options)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready"] else 2
 
