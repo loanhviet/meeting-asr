@@ -1,0 +1,26 @@
+[
+  {
+    "file": "ami_dev.list",
+    "url": "https://raw.githubusercontent.com/pyannote/AMI-diarization-setup/main/lists/dev.meetings.txt",
+    "bytes": 138,
+    "sha256": "f9a75648195c1731b9055dc3df8eb5cea261e08e7d9125a1976c1a45480a2aa9"
+  },
+  {
+    "file": "ES2011a.rttm",
+    "url": "https://raw.githubusercontent.com/pyannote/AMI-diarization-setup/main/only_words/rttms/dev/ES2011a.rttm",
+    "bytes": 12250,
+    "sha256": "2372b3775e1093a128cc30852f2119affacb2f44c7e815413bd3a84df2bb414b"
+  },
+  {
+    "file": "ES2011a.Array1-01.wav",
+    "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/ES2011a/audio/ES2011a.Array1-01.wav",
+    "bytes": 35643096,
+    "sha256": "eef59d96abe292a2b421b39d8ea8fea250210a9028bfe92758d58e51d18f9f7a"
+  },
+  {
+    "file": "ami_public_manual_1.6.2.zip",
+    "url": "https://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/ami_public_manual_1.6.2.zip",
+    "bytes": 22887865,
+    "sha256": "b56e5babb2496b8795deeeda7e71178d7fbc9963f94276cf2a3f4b56ebbc9f9d"
+  }
+]

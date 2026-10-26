@@ -54,7 +54,7 @@ def ordering(row):
     return hashlib.sha256(f"{SEED}:{row['id']}".encode()).hexdigest()
 
 
-def prepare(root, out):
+def prepare(root, out, *, manifest=None, num_beams=None):
     from meeting_asr.settings import config_hash, load_config
 
     os.environ["MEETING_LLM_ENABLED"] = "false"
@@ -64,18 +64,91 @@ def prepare(root, out):
     config["runtime"]["device"] = "cuda"
     config["paths"]["cache_dir"] = str(out / "cache")
     config["paths"]["results_dir"] = str(out)
+    if num_beams is not None:
+        if isinstance(num_beams, bool) or not isinstance(num_beams, int) or num_beams < 1:
+            raise ValueError("num_beams must be a positive integer")
+        config["dicow"]["num_beams"] = num_beams
+    if manifest is not None:
+        manifest = Path(manifest).resolve()
+        root = manifest.parent
     selected = []
 
     def add(row, mode="pipeline"):
         row = copy.deepcopy(row)
+        if (
+            Path(row["dataset"]).name != row["dataset"]
+            or row["dataset"] in {".", ".."}
+            or Path(row["id"]).name != row["id"]
+            or Path(row["id"]).stem in {"", ".", ".."}
+        ):
+            raise ValueError("dataset and sample IDs must be safe path components")
+        if row["duration_sec"] < 5:
+            raise ValueError("evaluation inputs must meet the five-second audio contract")
         for key in ("audio_path", "reference_rttm", "reference_uem", "reference_json"):
             if row.get(key):
                 row[key] = str((root / row[key]).resolve())
         row["mode"] = mode
-        row["evaluation_split"] = "frozen_diagnostic; do not tune on these results"
+        row["evaluation_split"] = (
+            "development; configuration selection permitted"
+            if manifest and row.get("split") == "dev"
+            else "frozen_diagnostic; do not tune on these results"
+        )
         row["audio_sha256"] = digest(row["audio_path"])
         selected.append(row)
 
+    if manifest is not None:
+        for row in read_rows(manifest):
+            add(row, row.get("mode", "pipeline"))
+    else:
+        _add_legacy_sources(root, add)
+    identities = [(r["mode"], r["dataset"], Path(r["id"]).stem) for r in selected]
+    if len(set(identities)) != len(identities):
+        raise ValueError("sample output identities must be unique")
+    for row in selected:
+        if row.get("reference_json"):
+            row["reference_json_sha256"] = digest(row["reference_json"])
+        if row.get("reference_rttm"):
+            row["reference_rttm_sha256"] = digest(row["reference_rttm"])
+    payload = {
+        "created_at": datetime.now(UTC).isoformat(),
+        "scope": "Vietnamese general meetings; IT is one optional domain",
+        "selection_seed": SEED,
+        "selection_policy": (
+            "explicit frozen manifest"
+            if manifest
+            else "hash order before prediction; one ViMD clip/province, "
+            "one VietMed pilot test clip/speaker, 40 distinct FLEURS test prompts, "
+            "all ViYT M2 and first 10 ViYT production pipeline; minimum input 5s"
+        ),
+        "manifest_sha256": digest(manifest) if manifest else None,
+        "llm_enabled": False,
+        "config": config,
+        "config_hash": config_hash(config),
+        "code_sha256": {
+            str(p.relative_to(PROJECT)): digest(p)
+            for p in [
+                Path(__file__),
+                PROJECT / "src/meeting_asr/dicow_runner.py",
+                PROJECT / "src/meeting_asr/pipeline.py",
+                PROJECT / "src/meeting_asr/preprocess.py",
+            ]
+        },
+        "git_commit": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=PROJECT, text=True
+        ).strip(),
+        "rows": selected,
+    }
+    target = out / "selection.json"
+    if target.exists():
+        raise ValueError("selection already frozen; choose a new output directory")
+    write_json(target, payload)
+    import yaml
+
+    (out / "config.yaml").write_text(yaml.safe_dump(config, allow_unicode=True))
+    print(json.dumps({"selected": len(selected), "out": str(out)}), flush=True)
+
+
+def _add_legacy_sources(root, add):
     viyt = read_rows(root / "manifests/viyt_diar/test.jsonl")
     for row in sorted(viyt, key=ordering):
         add(row, "diarization")
@@ -102,43 +175,6 @@ def prepare(root, out):
     if extras.is_file():
         for row in json.loads(extras.read_text()):
             add(row)
-    for row in selected:
-        if row.get("reference_json"):
-            row["reference_json_sha256"] = digest(row["reference_json"])
-        if row.get("reference_rttm"):
-            row["reference_rttm_sha256"] = digest(row["reference_rttm"])
-    payload = {
-        "created_at": datetime.now(UTC).isoformat(),
-        "scope": "Vietnamese general meetings; IT is one optional domain",
-        "selection_seed": SEED,
-        "selection_policy": "hash order before prediction; one ViMD clip/province, "
-        "one VietMed pilot test clip/speaker, 40 distinct FLEURS test prompts, "
-        "all ViYT M2 and first 10 ViYT production pipeline; minimum input 5s",
-        "llm_enabled": False,
-        "config": config,
-        "config_hash": config_hash(config),
-        "code_sha256": {
-            str(p.relative_to(PROJECT)): digest(p)
-            for p in [
-                Path(__file__),
-                PROJECT / "src/meeting_asr/dicow_runner.py",
-                PROJECT / "src/meeting_asr/pipeline.py",
-                PROJECT / "src/meeting_asr/preprocess.py",
-            ]
-        },
-        "git_commit": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=PROJECT, text=True
-        ).strip(),
-        "rows": selected,
-    }
-    target = out / "selection.json"
-    if target.exists():
-        raise ValueError("selection already frozen; choose a new output directory")
-    write_json(target, payload)
-    import yaml
-
-    (out / "config.yaml").write_text(yaml.safe_dump(config, allow_unicode=True))
-    print(json.dumps({"selected": len(selected), "out": str(out)}), flush=True)
 
 
 def folder_for(out, row):
@@ -227,6 +263,12 @@ def score(row, folder, status="ok", error=None, elapsed=None):
         result["reference"] = reference
         result["wer"] = error_counts(reference, hypothesis)
         result["cer"] = error_counts(reference, hypothesis, characters=True)
+    if row.get("paper_metrics") and row.get("reference_json"):
+        from meeting_asr.evaluation.paper import score_segments, transcript_segments
+
+        result["paper_metrics"] = score_segments(
+            transcript_segments(gold), transcript_segments(document) if document else [], collar=5.0
+        )
     if row.get("reference_rttm"):
         if digest(row["reference_rttm"]) != row["reference_rttm_sha256"]:
             raise ValueError("reference RTTM changed after selection")
@@ -267,7 +309,11 @@ def score(row, folder, status="ok", error=None, elapsed=None):
 
 
 def run_pipeline_rows(out, datasets):
+    from meeting_asr.settings import config_hash
+
     selection = json.loads((out / "selection.json").read_text())
+    if config_hash(selection["config"]) != selection["config_hash"]:
+        raise ValueError("frozen configuration hash changed")
     rows = [r for r in selection["rows"] if r["mode"] == "pipeline"]
     if datasets:
         rows = [r for r in rows if r["dataset"] in datasets]
@@ -276,12 +322,6 @@ def run_pipeline_rows(out, datasets):
         folder.mkdir(parents=True, exist_ok=True)
         if digest(row["audio_path"]) != row["audio_sha256"]:
             raise ValueError("audio changed after selection")
-        existing = folder / "score.json"
-        if existing.exists():
-            result = json.loads(existing.read_text())
-            if result["status"] == "ok" and result["audio_sha256"] == row["audio_sha256"]:
-                print(json.dumps({"reused": row["id"]}), flush=True)
-                continue
         config = copy.deepcopy(selection["config"])
         config["asr"]["language"] = row.get("language", "vi")
         import yaml
@@ -290,8 +330,6 @@ def run_pipeline_rows(out, datasets):
         config_path.write_text(yaml.safe_dump(config, allow_unicode=True))
         run_path = folder / "run.json"
         if run_path.exists():
-            from meeting_asr.settings import config_hash
-
             previous_run = json.loads(run_path.read_text())
             if (
                 previous_run["config_hash"] == config_hash(config)
@@ -580,12 +618,16 @@ def main():
     parser.add_argument("--root", type=Path, default=PROJECT / "data/gold/vi_asr_v1")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--datasets", nargs="*")
+    parser.add_argument(
+        "--manifest", type=Path, help="explicit JSONL inputs; paths relative to manifest"
+    )
+    parser.add_argument("--num-beams", type=int, help="freeze a DiCoW decoding beam count")
     args = parser.parse_args()
     out = args.out.resolve()
     os.environ.setdefault("OMP_NUM_THREADS", "2")
     os.environ.setdefault("MKL_NUM_THREADS", "2")
     if args.command == "prepare":
-        prepare(args.root.resolve(), out)
+        prepare(args.root.resolve(), out, manifest=args.manifest, num_beams=args.num_beams)
     elif args.command == "run":
         run_pipeline_rows(out, args.datasets)
     elif args.command == "prepare-diarization":
