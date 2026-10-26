@@ -6,6 +6,10 @@ Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm
 
 Kết quả DiCoW và giới hạn: [DICOW_COMPARISON.md](DICOW_COMPARISON.md). [RELEASE_STATUS.md](RELEASE_STATUS.md) giữ snapshot hệ cũ ngày 06/10. Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](ACCEPTANCE.md). Có [sơ đồ kiến trúc](ARCHITECTURE.md) và [README tiếng Anh](README.en.md).
 
+Quy trình chọn decoding trên dev, bộ chấm MeetEval cpWER/tcpWER/tcORC-WER và kiểm tra API thật bằng `llm-check --probe`: [ASR_IMPROVEMENT_WORKFLOW.md](document/ASR_IMPROVEMENT_WORKFLOW.md).
+
+[Kết quả vòng cải thiện 1](document/ASR_IMPROVEMENT_ROUND1_2026-10-26.md): beam 3 chỉ cải thiện nhẹ trên dev; beam 5 có lỗi lặp text trên AMI. Giữ beam 1 mặc định, chưa fine-tune.
+
 **CLI, API và Docker mặc định dùng DiariZen + DiCoW** qua `configs/default.yaml`; `configs/dicow-author.yaml` là profile tương đương để gọi tường minh. Runtime tác giả tách khỏi môi trường ứng dụng; xem [DICOW.md](DICOW.md). `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` chỉ dùng khi chủ động chạy đối chứng.
 
 Hướng phát triển đã thống nhất: DiCoW làm hướng nghiên cứu chính, giữ hệ cũ làm baseline. Đọc [CONTEXT.md](CONTEXT.md) để tiếp tục từ quyết định, kết quả và công việc còn lại của phiên 12/10/2026.

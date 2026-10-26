@@ -5,6 +5,13 @@ biên bản và hỏi đáp có dẫn chứng. Họp IT là một nhóm tình hu
 này. Kết quả và giới hạn của lượt đo nằm trong
 [báo cáo đánh giá](GENERAL_MEETING_EVALUATION_2026-10-26.md).
 
+Đã hoàn tất vòng triển khai đầu trên dev riêng: scorer MeetEval, beam 1/3/5,
+40 đối chứng PhoWhisper và chẩn đoán LLM. Xem
+[kết quả vòng 1](ASR_IMPROVEMENT_ROUND1_2026-10-26.md). Beam 3 chỉ giảm một
+lỗi tiếng Việt, beam 5 gặp lặp text; giữ mặc định beam 1. LLM trả
+`insufficient_quota`; bộ họp tiếng Việt có nhãn đã nghe rà và nghiệm thu
+semantic vẫn là việc tiếp theo, chưa training.
+
 ## Cơ sở chọn thứ tự công việc
 
 - DiCoW hiện có WER 14,94% trên 40 clip FLEURS, 20,82% trên 63 clip ViMD và
@@ -51,7 +58,10 @@ diện mọi cuộc họp.
 
 Đồng thời kiểm tra quyền truy cập/model/endpoint của cấu hình LLM đã chọn,
 chạy một canary công khai thành công, lưu model/prompt và metadata đã khử key.
-`llm-check` hiện chỉ xác nhận đủ cấu hình, chưa xác nhận API thực sự dùng được.
+`llm-check` mặc định chỉ xác nhận đủ cấu hình. Vòng triển khai đầu đã bổ sung
+`llm-check --probe` để gửi một canary ngắn và ghi HTTP/provider code;
+xem [quy trình](ASR_IMPROVEMENT_WORKFLOW.md). Canary vẫn cần thành công trước
+khi chấm chất lượng biên bản/hỏi đáp qua API này.
 
 **Đầu ra:** manifest có nguồn/checksum/split; transcript, RTTM/UEM đã soát;
 quy ước chấm; câu hỏi và đáp án/dẫn chứng giữ riêng; canary biên bản thành công.

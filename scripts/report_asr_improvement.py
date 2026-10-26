@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 
 from evaluate_general_meetings import digest, folder_for, read_rows, write_json
@@ -36,7 +37,7 @@ def build_evidence(out):
         }
         for key, r in expected.items()
     }
-    groups, revision = {}, None
+    groups, revision, repetition = {}, None, []
     matched_diarization = True
     for beam in experiment["beams"]:
         folder = out / f"beam-{beam}"
@@ -89,6 +90,22 @@ def build_evidence(out):
                 raise ValueError("reference denominator changed across beams")
             pair["reference_units"] = row["wer"]["reference_units"]
             pair["errors_by_beam"][str(beam)] = row["wer"]["errors"]
+            if row["dataset"] == "ami_dev":
+                words = row["hypothesis"].split()
+                ngrams = Counter(tuple(words[i : i + 5]) for i in range(max(0, len(words) - 4)))
+                common = ngrams.most_common(1)
+                repetition.append(
+                    {
+                        "beam": beam,
+                        "dataset": row["dataset"],
+                        "id": row["id"],
+                        "hypothesis_words": len(words),
+                        "insertions": row["wer"]["insertions"],
+                        "most_repeated_5gram": " ".join(common[0][0]) if common else None,
+                        "occurrences": common[0][1] if common else 0,
+                        "note": "Text repetition diagnostic; not an independent listening judgment.",
+                    }
+                )
         groups[str(beam)] = json.loads((folder / "summary.json").read_text())["groups"]
     controls = json.loads((baseline / "phowhisper_comparison_summary.json").read_text())
     control_rows = read_rows(baseline / "phowhisper_comparison_rows.jsonl")
@@ -127,6 +144,7 @@ def build_evidence(out):
         "phowhisper_controls": controls,
         "llm_probe": probe,
         "paired_counts": list(paired.values()),
+        "ami_repetition_diagnostic": repetition,
         "limitations": [
             "Development selection, not an independent final test or paper reproduction.",
             "Short VI clips are supplementary domains, not full multi-speaker Vietnamese meetings.",

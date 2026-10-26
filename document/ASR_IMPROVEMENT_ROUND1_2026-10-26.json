@@ -1,0 +1,1384 @@
+{
+  "experiment": {
+    "manifest_sha256": "7dce0239effb03a77fa61c74893f3e3aab7ac2129f64e01e617c25ebc1da8325",
+    "original_manifest_sha256": "7b5f1cc5c425c62c1e07ad6e02b7845104ef69bffdcd85fb4d328bafab7bbc1f",
+    "beams": [
+      1,
+      3,
+      5
+    ],
+    "rows_per_beam": 41,
+    "selection_split": "dev",
+    "selection_rule": "Complete runs; no per-Vietnamese-dataset WER regression and no AMI dev tcpWER regression relative to beam 1. Minimize macro mean of Vietnamese dataset WERs; ties prefer fewer beams. English control excluded from the Vietnamese objective.",
+    "test_used_for_selection": false,
+    "training_performed": false,
+    "runtime_note": "Local GPU, sequential pipeline subprocesses, offline cached weights, LLM disabled."
+  },
+  "data": {
+    "clips": 41,
+    "audio_sec": 560.84,
+    "all_split_dev": true,
+    "ami_recording": "ES2011a",
+    "ami_source_start_sec": 600.0,
+    "ami_source_end_sec": 779.34,
+    "ami_words": 550,
+    "new_download_bytes": 58543349
+  },
+  "runtime": {
+    "author_commit": "801e2130d00142a7da5845754f87b97550053a75",
+    "diarizen_code_commit": "4d1009d4a3f1bc41777623e9d74b8081564cddf9",
+    "model_name": "BUT-FIT/DiCoW_v3_MLC",
+    "model_revision": "99c64e8dc409a158816e808a1ee556cdfd0af51c",
+    "diarization_model": "BUT-FIT/diarizen-wavlm-large-s80-md",
+    "diarization_revision": "6285693ddd5b38e8229acb93f864f3d04a82bee1",
+    "embedding_revision": "837717ddb9ff5507820346191109dc79c958d614",
+    "packages": {
+      "torch": "2.8.0",
+      "torchaudio": "2.8.0",
+      "transformers": "4.42.4",
+      "pyannote.audio": "3.1.1"
+    },
+    "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "dtype": "torch.float16",
+    "ctc_weight": 0.0,
+    "target_batch_size": 1
+  },
+  "predicted_rttm_identical_across_beams": true,
+  "comparison": {
+    "complete": true,
+    "candidates": [
+      {
+        "beam": 1,
+        "complete": true,
+        "failed": 0,
+        "vietnamese_wer_by_dataset": {
+          "fleurs_vi": 0.14494875549048317,
+          "vietmed": 0.23492723492723494
+        },
+        "vi_macro_wer_objective": 0.18993799520885907,
+        "ami_metrics": {
+          "cpwer": {
+            "error_rate": 0.22363636363636363,
+            "errors": 123,
+            "length": 550,
+            "insertions": 11,
+            "deletions": 63,
+            "substitutions": 49,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "missed_speaker": 1,
+            "falarm_speaker": 0,
+            "scored_speaker": 4,
+            "assignment": [
+              [
+                "FEE041",
+                "SPEAKER_00"
+              ],
+              [
+                "FEE044",
+                "SPEAKER_01"
+              ],
+              [
+                "FEE043",
+                "SPEAKER_02"
+              ],
+              [
+                "FEE042",
+                null
+              ]
+            ]
+          },
+          "tcpwer": {
+            "error_rate": 0.24,
+            "errors": 132,
+            "length": 550,
+            "insertions": 19,
+            "deletions": 71,
+            "substitutions": 42,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "missed_speaker": 1,
+            "falarm_speaker": 0,
+            "scored_speaker": 4,
+            "assignment": [
+              [
+                "FEE041",
+                "SPEAKER_00"
+              ],
+              [
+                "FEE044",
+                "SPEAKER_01"
+              ],
+              [
+                "FEE043",
+                "SPEAKER_02"
+              ],
+              [
+                "FEE042",
+                null
+              ]
+            ]
+          },
+          "tcorcwer": {
+            "error_rate": 0.20909090909090908,
+            "errors": 115,
+            "length": 550,
+            "insertions": 11,
+            "deletions": 63,
+            "substitutions": 41,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "assignment": [
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_01",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_00"
+            ]
+          }
+        },
+        "elapsed_sec": 445.0929432549892,
+        "audio_sec": 560.84,
+        "peak_cuda_allocated_bytes": 2133852160,
+        "eligible": true
+      },
+      {
+        "beam": 3,
+        "complete": true,
+        "failed": 0,
+        "vietnamese_wer_by_dataset": {
+          "fleurs_vi": 0.14494875549048317,
+          "vietmed": 0.23284823284823286
+        },
+        "vi_macro_wer_objective": 0.188898494169358,
+        "ami_metrics": {
+          "cpwer": {
+            "error_rate": 0.20545454545454545,
+            "errors": 113,
+            "length": 550,
+            "insertions": 13,
+            "deletions": 47,
+            "substitutions": 53,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "missed_speaker": 1,
+            "falarm_speaker": 0,
+            "scored_speaker": 4,
+            "assignment": [
+              [
+                "FEE041",
+                "SPEAKER_00"
+              ],
+              [
+                "FEE044",
+                "SPEAKER_01"
+              ],
+              [
+                "FEE043",
+                "SPEAKER_02"
+              ],
+              [
+                "FEE042",
+                null
+              ]
+            ]
+          },
+          "tcpwer": {
+            "error_rate": 0.22545454545454546,
+            "errors": 124,
+            "length": 550,
+            "insertions": 23,
+            "deletions": 57,
+            "substitutions": 44,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "missed_speaker": 1,
+            "falarm_speaker": 0,
+            "scored_speaker": 4,
+            "assignment": [
+              [
+                "FEE041",
+                "SPEAKER_00"
+              ],
+              [
+                "FEE044",
+                "SPEAKER_01"
+              ],
+              [
+                "FEE043",
+                "SPEAKER_02"
+              ],
+              [
+                "FEE042",
+                null
+              ]
+            ]
+          },
+          "tcorcwer": {
+            "error_rate": 0.18727272727272729,
+            "errors": 103,
+            "length": 550,
+            "insertions": 15,
+            "deletions": 49,
+            "substitutions": 39,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "assignment": [
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_01",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_02",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_00"
+            ]
+          }
+        },
+        "elapsed_sec": 450.469954288008,
+        "audio_sec": 560.84,
+        "peak_cuda_allocated_bytes": 2542423040,
+        "eligible": true
+      },
+      {
+        "beam": 5,
+        "complete": true,
+        "failed": 0,
+        "vietnamese_wer_by_dataset": {
+          "fleurs_vi": 0.14202049780380674,
+          "vietmed": 0.23700623700623702
+        },
+        "vi_macro_wer_objective": 0.1895133674050219,
+        "ami_metrics": {
+          "cpwer": {
+            "error_rate": 1.8254545454545454,
+            "errors": 1004,
+            "length": 550,
+            "insertions": 910,
+            "deletions": 46,
+            "substitutions": 48,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "missed_speaker": 1,
+            "falarm_speaker": 0,
+            "scored_speaker": 4,
+            "assignment": [
+              [
+                "FEE041",
+                "SPEAKER_00"
+              ],
+              [
+                "FEE044",
+                "SPEAKER_01"
+              ],
+              [
+                "FEE043",
+                "SPEAKER_02"
+              ],
+              [
+                "FEE042",
+                null
+              ]
+            ]
+          },
+          "tcpwer": {
+            "error_rate": 1.8454545454545455,
+            "errors": 1015,
+            "length": 550,
+            "insertions": 919,
+            "deletions": 55,
+            "substitutions": 41,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "missed_speaker": 1,
+            "falarm_speaker": 0,
+            "scored_speaker": 4,
+            "assignment": [
+              [
+                "FEE041",
+                "SPEAKER_00"
+              ],
+              [
+                "FEE044",
+                "SPEAKER_01"
+              ],
+              [
+                "FEE043",
+                "SPEAKER_02"
+              ],
+              [
+                "FEE042",
+                null
+              ]
+            ]
+          },
+          "tcorcwer": {
+            "error_rate": 1.8054545454545454,
+            "errors": 993,
+            "length": 550,
+            "insertions": 910,
+            "deletions": 46,
+            "substitutions": 37,
+            "reference_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 671.6600000000001
+            },
+            "hypothesis_self_overlap": {
+              "overlap_rate": 0.0,
+              "overlap_time": 0,
+              "total_time": 531.56
+            },
+            "assignment": [
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_01",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_02",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_02",
+              "SPEAKER_00",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_00",
+              "SPEAKER_00",
+              "SPEAKER_02",
+              "SPEAKER_01",
+              "SPEAKER_00"
+            ]
+          }
+        },
+        "elapsed_sec": 471.7212144209989,
+        "audio_sec": 560.84,
+        "peak_cuda_allocated_bytes": 3114874880,
+        "eligible": false
+      }
+    ],
+    "recommended_beam": 3,
+    "selection_rule": "Complete runs; no per-Vietnamese-dataset WER regression and no AMI dev tcpWER regression relative to beam 1. Minimize macro mean of Vietnamese dataset WERs; ties prefer fewer beams. English control excluded from the Vietnamese objective.",
+    "split": "dev",
+    "test_generalization_established": false
+  },
+  "groups_by_beam": {
+    "1": [
+      {
+        "mode": "pipeline",
+        "dataset": "ami_dev",
+        "clips": 1,
+        "failed": 0,
+        "audio_sec": 179.34,
+        "elapsed_sec": 42.215165492998494,
+        "wer": {
+          "rate": 0.2581818181818182,
+          "errors": 142,
+          "reference_units": 550
+        },
+        "cer": {
+          "rate": 0.2174549000487567,
+          "errors": 446,
+          "reference_units": 2051
+        },
+        "der": {
+          "strict": {
+            "miss_sec": 13.655000000000072,
+            "false_alarm_sec": 5.31500000000009,
+            "confusion_sec": 4.2249999999999375,
+            "total_sec": 183.09999999999994,
+            "rate": 0.126679410158384
+          },
+          "relaxed": {
+            "miss_sec": 5.6730000000000125,
+            "false_alarm_sec": 2.726000000000006,
+            "confusion_sec": 0.9720000000000368,
+            "total_sec": 115.32000000000002,
+            "rate": 0.0812608394033997
+          },
+          "no_collar_skip_overlap": {
+            "miss_sec": 6.29200000000008,
+            "false_alarm_sec": 5.314000000000085,
+            "confusion_sec": 1.295999999999978,
+            "total_sec": 123.12000000000002,
+            "rate": 0.10479207277453007
+          },
+          "collar_keep_overlap": {
+            "miss_sec": 10.632000000000001,
+            "false_alarm_sec": 2.726000000000006,
+            "confusion_sec": 2.9870000000000516,
+            "total_sec": 157.30000000000004,
+            "rate": 0.10390972663699971
+          }
+        }
+      },
+      {
+        "mode": "pipeline",
+        "dataset": "fleurs_vi",
+        "clips": 20,
+        "failed": 0,
+        "audio_sec": 256.5,
+        "elapsed_sec": 198.61518907298523,
+        "wer": {
+          "rate": 0.14494875549048317,
+          "errors": 99,
+          "reference_units": 683
+        },
+        "cer": {
+          "rate": 0.09393428812131424,
+          "errors": 223,
+          "reference_units": 2374
+        },
+        "der": null
+      },
+      {
+        "mode": "pipeline",
+        "dataset": "vietmed",
+        "clips": 20,
+        "failed": 0,
+        "audio_sec": 125.0,
+        "elapsed_sec": 204.2625886890055,
+        "wer": {
+          "rate": 0.23492723492723494,
+          "errors": 113,
+          "reference_units": 481
+        },
+        "cer": {
+          "rate": 0.1442369607211848,
+          "errors": 224,
+          "reference_units": 1553
+        },
+        "der": null
+      }
+    ],
+    "3": [
+      {
+        "mode": "pipeline",
+        "dataset": "ami_dev",
+        "clips": 1,
+        "failed": 0,
+        "audio_sec": 179.34,
+        "elapsed_sec": 43.926068190998194,
+        "wer": {
+          "rate": 0.24,
+          "errors": 132,
+          "reference_units": 550
+        },
+        "cer": {
+          "rate": 0.20282788883471478,
+          "errors": 416,
+          "reference_units": 2051
+        },
+        "der": {
+          "strict": {
+            "miss_sec": 13.655000000000072,
+            "false_alarm_sec": 5.31500000000009,
+            "confusion_sec": 4.2249999999999375,
+            "total_sec": 183.09999999999994,
+            "rate": 0.126679410158384
+          },
+          "relaxed": {
+            "miss_sec": 5.6730000000000125,
+            "false_alarm_sec": 2.726000000000006,
+            "confusion_sec": 0.9720000000000368,
+            "total_sec": 115.32000000000002,
+            "rate": 0.0812608394033997
+          },
+          "no_collar_skip_overlap": {
+            "miss_sec": 6.29200000000008,
+            "false_alarm_sec": 5.314000000000085,
+            "confusion_sec": 1.295999999999978,
+            "total_sec": 123.12000000000002,
+            "rate": 0.10479207277453007
+          },
+          "collar_keep_overlap": {
+            "miss_sec": 10.632000000000001,
+            "false_alarm_sec": 2.726000000000006,
+            "confusion_sec": 2.9870000000000516,
+            "total_sec": 157.30000000000004,
+            "rate": 0.10390972663699971
+          }
+        }
+      },
+      {
+        "mode": "pipeline",
+        "dataset": "fleurs_vi",
+        "clips": 20,
+        "failed": 0,
+        "audio_sec": 256.5,
+        "elapsed_sec": 204.4205807230028,
+        "wer": {
+          "rate": 0.14494875549048317,
+          "errors": 99,
+          "reference_units": 683
+        },
+        "cer": {
+          "rate": 0.09477674810446504,
+          "errors": 225,
+          "reference_units": 2374
+        },
+        "der": null
+      },
+      {
+        "mode": "pipeline",
+        "dataset": "vietmed",
+        "clips": 20,
+        "failed": 0,
+        "audio_sec": 125.0,
+        "elapsed_sec": 202.12330537400703,
+        "wer": {
+          "rate": 0.23284823284823286,
+          "errors": 112,
+          "reference_units": 481
+        },
+        "cer": {
+          "rate": 0.1468126207340631,
+          "errors": 228,
+          "reference_units": 1553
+        },
+        "der": null
+      }
+    ],
+    "5": [
+      {
+        "mode": "pipeline",
+        "dataset": "ami_dev",
+        "clips": 1,
+        "failed": 0,
+        "audio_sec": 179.34,
+        "elapsed_sec": 55.773557831998914,
+        "wer": {
+          "rate": 1.8581818181818182,
+          "errors": 1022,
+          "reference_units": 550
+        },
+        "cer": {
+          "rate": 1.082398829839103,
+          "errors": 2220,
+          "reference_units": 2051
+        },
+        "der": {
+          "strict": {
+            "miss_sec": 13.655000000000072,
+            "false_alarm_sec": 5.31500000000009,
+            "confusion_sec": 4.2249999999999375,
+            "total_sec": 183.09999999999994,
+            "rate": 0.126679410158384
+          },
+          "relaxed": {
+            "miss_sec": 5.6730000000000125,
+            "false_alarm_sec": 2.726000000000006,
+            "confusion_sec": 0.9720000000000368,
+            "total_sec": 115.32000000000002,
+            "rate": 0.0812608394033997
+          },
+          "no_collar_skip_overlap": {
+            "miss_sec": 6.29200000000008,
+            "false_alarm_sec": 5.314000000000085,
+            "confusion_sec": 1.295999999999978,
+            "total_sec": 123.12000000000002,
+            "rate": 0.10479207277453007
+          },
+          "collar_keep_overlap": {
+            "miss_sec": 10.632000000000001,
+            "false_alarm_sec": 2.726000000000006,
+            "confusion_sec": 2.9870000000000516,
+            "total_sec": 157.30000000000004,
+            "rate": 0.10390972663699971
+          }
+        }
+      },
+      {
+        "mode": "pipeline",
+        "dataset": "fleurs_vi",
+        "clips": 20,
+        "failed": 0,
+        "audio_sec": 256.5,
+        "elapsed_sec": 215.16904401099964,
+        "wer": {
+          "rate": 0.14202049780380674,
+          "errors": 97,
+          "reference_units": 683
+        },
+        "cer": {
+          "rate": 0.09224936815501264,
+          "errors": 219,
+          "reference_units": 2374
+        },
+        "der": null
+      },
+      {
+        "mode": "pipeline",
+        "dataset": "vietmed",
+        "clips": 20,
+        "failed": 0,
+        "audio_sec": 125.0,
+        "elapsed_sec": 200.77861257800032,
+        "wer": {
+          "rate": 0.23700623700623702,
+          "errors": 114,
+          "reference_units": 481
+        },
+        "cer": {
+          "rate": 0.15132002575660014,
+          "errors": 235,
+          "reference_units": 1553
+        },
+        "der": null
+      }
+    ]
+  },
+  "phowhisper_controls": {
+    "complete": true,
+    "groups": {
+      "vietmed": {
+        "clips": 20,
+        "failed": 0,
+        "dicow_wer": {
+          "errors": 113,
+          "reference_units": 481,
+          "rate": 0.23492723492723494
+        },
+        "phowhisper_wer": {
+          "errors": 127,
+          "reference_units": 481,
+          "rate": 0.26403326403326405
+        },
+        "phowhisper_cer": {
+          "errors": 312,
+          "reference_units": 1553,
+          "rate": 0.20090148100450742
+        }
+      },
+      "fleurs_vi": {
+        "clips": 20,
+        "failed": 0,
+        "dicow_wer": {
+          "errors": 99,
+          "reference_units": 683,
+          "rate": 0.14494875549048317
+        },
+        "phowhisper_wer": {
+          "errors": 97,
+          "reference_units": 683,
+          "rate": 0.14202049780380674
+        },
+        "phowhisper_cer": {
+          "errors": 247,
+          "reference_units": 2374,
+          "rate": 0.10404380791912385
+        }
+      }
+    },
+    "scope": "Same production preprocessing and predicted DiariZen timeline; PhoWhisper cascaded vs DiCoW conditioned, short Vietnamese clips only.",
+    "limitations": [
+      "Different ASR backbones: does not isolate FDDT.",
+      "Model resident and M2 reused; timing not comparable to end-to-end cold subprocess timing.",
+      "No conclusion on 3+ speaker meetings or heavy overlap from these short clips."
+    ]
+  },
+  "llm_probe": {
+    "ready": false,
+    "enabled": true,
+    "provider": "http",
+    "model_configured": true,
+    "endpoint_configured": true,
+    "missing": [],
+    "requests_sent": 1,
+    "mode": "live_probe",
+    "api_accessible": false,
+    "configuration_ready": true,
+    "model": "qwen3.7-max",
+    "endpoint_sha256": "74b2f964c2566f56588ff1f59db2e5705c8341313f1b972b50eaf0b1746f2499",
+    "max_output_tokens": 512,
+    "category": "permission_denied",
+    "http_status": 403,
+    "provider_code": "insufficient_quota"
+  },
+  "paired_counts": [
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000665",
+      "audio_sha256": "4bda10c9893906c1c4a6c724010e57f5243d6b94ef94f43224f6c1a960eb30e1",
+      "errors_by_beam": {
+        "1": 6,
+        "3": 5,
+        "5": 7
+      },
+      "reference_units": 29,
+      "phowhisper_errors": 6
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000641",
+      "audio_sha256": "c8a4cf20705a3794b73c187ba0811441c7c1e290765a00e19c68acb2fef9a754",
+      "errors_by_beam": {
+        "1": 6,
+        "3": 6,
+        "5": 6
+      },
+      "reference_units": 22,
+      "phowhisper_errors": 5
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_002309",
+      "audio_sha256": "2731b9ccecbff222013d2f8511fc42d05e20ff635e51fafb80aadfa74e3fc7d0",
+      "errors_by_beam": {
+        "1": 8,
+        "3": 9,
+        "5": 9
+      },
+      "reference_units": 11,
+      "phowhisper_errors": 10
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000165",
+      "audio_sha256": "86835578baa9243300bd76243defeb8074f4a42800e61f626e28789f4afc9761",
+      "errors_by_beam": {
+        "1": 10,
+        "3": 10,
+        "5": 10
+      },
+      "reference_units": 26,
+      "phowhisper_errors": 11
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000483",
+      "audio_sha256": "7afb40940ee2d704df7f15cfa1602840f71a2deb17a058a24ed78deb2d15a7f8",
+      "errors_by_beam": {
+        "1": 6,
+        "3": 5,
+        "5": 5
+      },
+      "reference_units": 20,
+      "phowhisper_errors": 3
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000314",
+      "audio_sha256": "f7f3a33e79c59f54750593c2002042fca5efc96cea56f5196efe9415faf6a666",
+      "errors_by_beam": {
+        "1": 0,
+        "3": 0,
+        "5": 0
+      },
+      "reference_units": 24,
+      "phowhisper_errors": 1
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_001025",
+      "audio_sha256": "3ba4878a73cbfd92004c4b0d26efeb840e0848ac4b65560066359a44030bd584",
+      "errors_by_beam": {
+        "1": 5,
+        "3": 3,
+        "5": 3
+      },
+      "reference_units": 25,
+      "phowhisper_errors": 2
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_001082",
+      "audio_sha256": "cbfe8e40b602fb38ade0890fb1c7df1df40c99dc47e1b71d9a4d2a088999f2e1",
+      "errors_by_beam": {
+        "1": 7,
+        "3": 7,
+        "5": 7
+      },
+      "reference_units": 28,
+      "phowhisper_errors": 5
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_001234",
+      "audio_sha256": "907d08d1904fca248c708dfcc66ef7a919c032a933e47cd9aca95410819737e8",
+      "errors_by_beam": {
+        "1": 11,
+        "3": 11,
+        "5": 11
+      },
+      "reference_units": 21,
+      "phowhisper_errors": 8
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_001539",
+      "audio_sha256": "47088f47579cd72d077f6941001993ba0f661a3694df54a5e2e8c3e26dda34f4",
+      "errors_by_beam": {
+        "1": 13,
+        "3": 13,
+        "5": 13
+      },
+      "reference_units": 28,
+      "phowhisper_errors": 13
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_002705",
+      "audio_sha256": "e9816cadf95801cbd033ae767aba5c078ddd8d4c11ec773bbbb7309844112eb4",
+      "errors_by_beam": {
+        "1": 0,
+        "3": 0,
+        "5": 0
+      },
+      "reference_units": 34,
+      "phowhisper_errors": 2
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_002865",
+      "audio_sha256": "f280967663b7c116a62ee92d6d72d723808e41e765d7cb870c032d8a9e086812",
+      "errors_by_beam": {
+        "1": 2,
+        "3": 2,
+        "5": 2
+      },
+      "reference_units": 28,
+      "phowhisper_errors": 4
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_002864",
+      "audio_sha256": "66be9aed18aedce8fb4cf332a4b6528edf0b2615b12d9e6c47b4ae968b7ffc17",
+      "errors_by_beam": {
+        "1": 7,
+        "3": 8,
+        "5": 8
+      },
+      "reference_units": 23,
+      "phowhisper_errors": 16
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_002435",
+      "audio_sha256": "56edb399e9f0a7653e7b0e995c69450b4d34110e47f827616431249de648dd79",
+      "errors_by_beam": {
+        "1": 14,
+        "3": 15,
+        "5": 15
+      },
+      "reference_units": 22,
+      "phowhisper_errors": 18
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000022",
+      "audio_sha256": "b1edba0459fe22b1841a7e8a86744496ef053492a9f8f964e8c7af89423e1bd7",
+      "errors_by_beam": {
+        "1": 3,
+        "3": 3,
+        "5": 3
+      },
+      "reference_units": 27,
+      "phowhisper_errors": 5
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000052",
+      "audio_sha256": "c29700c15c4a2ba41b183ef8ee7b96dafadcd7055d46a1af1b7f21ebfbd77538",
+      "errors_by_beam": {
+        "1": 3,
+        "3": 3,
+        "5": 3
+      },
+      "reference_units": 33,
+      "phowhisper_errors": 5
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000921",
+      "audio_sha256": "9202a59dc0449fa402159a17bd21cb5760214ce80626ad22c94208af8edd87b9",
+      "errors_by_beam": {
+        "1": 0,
+        "3": 0,
+        "5": 0
+      },
+      "reference_units": 18,
+      "phowhisper_errors": 0
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_002018",
+      "audio_sha256": "0a52f813158116540c136ce881e8bb6e40122c122fa90b43c9f60b0d250016ea",
+      "errors_by_beam": {
+        "1": 0,
+        "3": 0,
+        "5": 0
+      },
+      "reference_units": 29,
+      "phowhisper_errors": 4
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000668",
+      "audio_sha256": "1239fc8db5b6863bc5b48f22dcc8ebcbf3211a8e2a669ee6c2f0ae933592785b",
+      "errors_by_beam": {
+        "1": 7,
+        "3": 7,
+        "5": 7
+      },
+      "reference_units": 17,
+      "phowhisper_errors": 5
+    },
+    {
+      "dataset": "vietmed",
+      "id": "utt_id_dev_000647",
+      "audio_sha256": "4e94a0caf52b3fd1781c02e93a946e68c48f97fa753997f7ec43fd9ef0f316df",
+      "errors_by_beam": {
+        "1": 5,
+        "3": 5,
+        "5": 5
+      },
+      "reference_units": 16,
+      "phowhisper_errors": 4
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "288972552359107972.wav",
+      "audio_sha256": "2457bf78533b7ee3e643341b4d35b84e12a88a32c62631cc2aab3adca769daa3",
+      "errors_by_beam": {
+        "1": 3,
+        "3": 3,
+        "5": 3
+      },
+      "reference_units": 34,
+      "phowhisper_errors": 0
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "13269609294897102735.wav",
+      "audio_sha256": "9ebd6f92fc6f1ef94d60867a2fce044b4a3e969e5c1c875c480b8794a48d9ee1",
+      "errors_by_beam": {
+        "1": 4,
+        "3": 4,
+        "5": 4
+      },
+      "reference_units": 26,
+      "phowhisper_errors": 4
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "9295877030604668222.wav",
+      "audio_sha256": "331d5fe67c0254e5171d295c8223164e4efbf5ed22a3a0491a9ddfb37b9010e2",
+      "errors_by_beam": {
+        "1": 0,
+        "3": 0,
+        "5": 0
+      },
+      "reference_units": 50,
+      "phowhisper_errors": 2
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "10364262111328509853.wav",
+      "audio_sha256": "119bc80fec1f55e8381bb99f9741d2995a15af8d6c71db816eb54a492e022f50",
+      "errors_by_beam": {
+        "1": 1,
+        "3": 1,
+        "5": 1
+      },
+      "reference_units": 17,
+      "phowhisper_errors": 1
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "355522728651529644.wav",
+      "audio_sha256": "64011676403f9997fd8bacefdf67ce517192154376ed935758f9eb1ea2537ab2",
+      "errors_by_beam": {
+        "1": 5,
+        "3": 5,
+        "5": 5
+      },
+      "reference_units": 32,
+      "phowhisper_errors": 2
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "2956367856662245149.wav",
+      "audio_sha256": "f4fa63ec93f2c8f799a354e1e1c2b0f90210a03682f9021fd997b81e669f7681",
+      "errors_by_beam": {
+        "1": 4,
+        "3": 4,
+        "5": 4
+      },
+      "reference_units": 18,
+      "phowhisper_errors": 1
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "4566713305666507206.wav",
+      "audio_sha256": "394023c9d5bc79cd38a9a248007f1a598110a55b1e27245a69b1f14c19f12f06",
+      "errors_by_beam": {
+        "1": 4,
+        "3": 4,
+        "5": 4
+      },
+      "reference_units": 35,
+      "phowhisper_errors": 7
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "10467396475561744099.wav",
+      "audio_sha256": "7a4010a100c152fe15bf10de35b448a5160990cc1edf71a6dee964d744cd294b",
+      "errors_by_beam": {
+        "1": 3,
+        "3": 3,
+        "5": 3
+      },
+      "reference_units": 25,
+      "phowhisper_errors": 2
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "13826895043007193331.wav",
+      "audio_sha256": "44389cfeeb4dc5a93f22555a6a99e14e6572061ea600a15fd6ec74897d301600",
+      "errors_by_beam": {
+        "1": 7,
+        "3": 7,
+        "5": 7
+      },
+      "reference_units": 31,
+      "phowhisper_errors": 7
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "16692558792136716833.wav",
+      "audio_sha256": "948f9b89f524fca1ecf82049dd73dd546a229132d871682624f841649d8f99dc",
+      "errors_by_beam": {
+        "1": 3,
+        "3": 3,
+        "5": 3
+      },
+      "reference_units": 44,
+      "phowhisper_errors": 1
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "2335344692138890377.wav",
+      "audio_sha256": "bcf9933c13ebe3cacac00c780bb458ce977e3753cca891693c7e3e8ae02b24f0",
+      "errors_by_beam": {
+        "1": 19,
+        "3": 19,
+        "5": 19
+      },
+      "reference_units": 37,
+      "phowhisper_errors": 20
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "11988143203465826825.wav",
+      "audio_sha256": "aca76632e75714fa933563a2a50f63298a83478cf0d4faded1b6fab013d64e2e",
+      "errors_by_beam": {
+        "1": 1,
+        "3": 0,
+        "5": 0
+      },
+      "reference_units": 18,
+      "phowhisper_errors": 1
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "874493660479990758.wav",
+      "audio_sha256": "adf98234f21d9e08f3a488e4c2bcddbb4c1af47866021b7345e0316ddd6b4b24",
+      "errors_by_beam": {
+        "1": 1,
+        "3": 1,
+        "5": 1
+      },
+      "reference_units": 39,
+      "phowhisper_errors": 2
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "15550979886577607926.wav",
+      "audio_sha256": "aa5e897f9e0705ca3eb568262bbdafa9689599255c62b03b51dc2a1cef64fd3c",
+      "errors_by_beam": {
+        "1": 11,
+        "3": 10,
+        "5": 10
+      },
+      "reference_units": 26,
+      "phowhisper_errors": 10
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "4364473975206158506.wav",
+      "audio_sha256": "43c78dde433664d4e937f66ab451befc8481a7cb9bbfc860d5b933f004304a0c",
+      "errors_by_beam": {
+        "1": 6,
+        "3": 6,
+        "5": 6
+      },
+      "reference_units": 52,
+      "phowhisper_errors": 5
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "9391019049588162115.wav",
+      "audio_sha256": "7a7b84277b2d91c58941dece2a54bc39c92475a31d777bac1dfca4f8bed2b4e6",
+      "errors_by_beam": {
+        "1": 7,
+        "3": 7,
+        "5": 7
+      },
+      "reference_units": 66,
+      "phowhisper_errors": 5
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "10398673072244472767.wav",
+      "audio_sha256": "1218ef99333d480522f80bcf5f69d6cec3cb4b4f2692bd95ebd736a886a10c95",
+      "errors_by_beam": {
+        "1": 1,
+        "3": 1,
+        "5": 1
+      },
+      "reference_units": 30,
+      "phowhisper_errors": 3
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "14301804876253465717.wav",
+      "audio_sha256": "35752a2173b2e2384c7c864c03a1b31c4fc4da60ecbe6a3b9f6aa5a989ac3d63",
+      "errors_by_beam": {
+        "1": 13,
+        "3": 15,
+        "5": 13
+      },
+      "reference_units": 52,
+      "phowhisper_errors": 21
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "16136390538496156896.wav",
+      "audio_sha256": "6a09264f034c986175dabcccd18ce4ee265065e5a4809cba9b5164ad0d1bf73e",
+      "errors_by_beam": {
+        "1": 1,
+        "3": 1,
+        "5": 1
+      },
+      "reference_units": 20,
+      "phowhisper_errors": 0
+    },
+    {
+      "dataset": "fleurs_vi",
+      "id": "8057069975890480525.wav",
+      "audio_sha256": "71e2da37d179ab7063a330dd554b1b7d2c683399c9728b85e501f656ad208007",
+      "errors_by_beam": {
+        "1": 5,
+        "3": 5,
+        "5": 5
+      },
+      "reference_units": 31,
+      "phowhisper_errors": 3
+    },
+    {
+      "dataset": "ami_dev",
+      "id": "ES2011a_room_excerpt",
+      "audio_sha256": "e48791ed8d050ed27fa5bf51c05793ff9464518201e2faf67e271f0381c98bcf",
+      "errors_by_beam": {
+        "1": 142,
+        "3": 132,
+        "5": 1022
+      },
+      "reference_units": 550
+    }
+  ],
+  "ami_repetition_diagnostic": [
+    {
+      "beam": 1,
+      "dataset": "ami_dev",
+      "id": "ES2011a_room_excerpt",
+      "hypothesis_words": 498,
+      "insertions": 24,
+      "most_repeated_5gram": "you should design something that",
+      "occurrences": 2,
+      "note": "Text repetition diagnostic; not an independent listening judgment."
+    },
+    {
+      "beam": 3,
+      "dataset": "ami_dev",
+      "id": "ES2011a_room_excerpt",
+      "hypothesis_words": 516,
+      "insertions": 31,
+      "most_repeated_5gram": "you should design something that",
+      "occurrences": 2,
+      "note": "Text repetition diagnostic; not an independent listening judgment."
+    },
+    {
+      "beam": 5,
+      "dataset": "ami_dev",
+      "id": "ES2011a_room_excerpt",
+      "hypothesis_words": 1414,
+      "insertions": 925,
+      "most_repeated_5gram": "bit of a bit of",
+      "occurrences": 288,
+      "note": "Text repetition diagnostic; not an independent listening judgment."
+    }
+  ],
+  "limitations": [
+    "Development selection, not an independent final test or paper reproduction.",
+    "Short VI clips are supplementary domains, not full multi-speaker Vietnamese meetings.",
+    "Public reference annotations have not been independently listened to by this project.",
+    "AMI is English and named in model training; temporal scores use interpolated word times.",
+    "GPU peaks are PyTorch allocated bytes, not total device memory requirements.",
+    "PhoWhisper reuses M1/M2 with resident ASR weights; its latency is not comparable to a full pipeline run."
+  ]
+}

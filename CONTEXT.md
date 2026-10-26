@@ -1,5 +1,34 @@
 # Context để tiếp tục triển khai — 12/10/2026
 
+## Vòng cải thiện 1 đã hoàn tất — 26/10/2026
+
+Người dùng đã duyệt tự triển khai trên branch mới `feat/asr-quality-improvement`.
+Baseline evaluation được lưu ở commit `3908a04`; chẩn đoán LLM ở `bb302fe`,
+scorer/dev grid ở `6804966`. Báo cáo đầy đủ cùng evidence JSON ở
+`document/ASR_IMPROVEMENT_ROUND1_2026-10-26.{md,json}`; cách tái chạy ở
+`document/ASR_IMPROVEMENT_WORKFLOW.md`.
+
+Đã chạy 123 full pipeline DiCoW (41 dev × beam 1/3/5) và 40 đối chứng
+PhoWhisper, không lỗi inference. Dev mới gồm 20 FLEURS + 20 VietMed + AMI
+ES2011a room-mic 179,34 giây; không tuning test cũ. Tải thêm 58,54 MB theo
+lock, model giữ cache/runtime tác giả. MeetEval 0.4.3 chấm cpWER/tcpWER/
+tcORC-WER, collar 5 giây, timing nội suy từ utterance; không gọi là tái lập
+benchmark paper.
+
+Beam 3 được chọn làm ứng viên dev: FLEURS WER giữ 14,49%, VietMed 23,49%
+→ 23,28% so với beam 1, tổng chỉ giảm một lỗi. AMI tcpWER 24,00% → 22,55%.
+Beam 5 lặp text hàng trăm lần trên AMI, WER 185,82%, bị loại. Profile thử ở
+`configs/recommended-dicow-round1.yaml`; **mặc định vẫn beam 1**. PhoWhisper
+dev FLEURS 14,20%, VietMed 26,40%, nên không đổi backend chung theo clip ngắn.
+
+Đã có `llm-check --probe --out ...`, một prompt tĩnh ngắn, không transcript;
+vòng này gọi thật một lần, nhận HTTP 403 `insufficient_quota`. Cần quota/
+credential hợp lệ trước đánh giá semantic. Không tự đổi provider hoặc mua
+GPU/API. 169 tests đạt, 3 skip; Ruff và wheel/sdist build đạt. Chưa training,
+chưa nghe rà/gán nhãn độc lập. Tiếp theo ưu tiên bộ 8 họp tiếng Việt có
+tham chiếu đã soát, tách 4 dev/4 test theo recording; nghe rà 3 ViYT đã đánh
+dấu; rồi đo công sửa, biên bản/hỏi đáp và mới cân nhắc pilot fine-tune.
+
 ## Làm rõ mục tiêu — 26/10/2026
 
 Mục tiêu là hoàn thiện hệ thống cho **các cuộc họp tiếng Việt thông thường**, với
