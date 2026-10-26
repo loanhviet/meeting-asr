@@ -1,5 +1,28 @@
 # Context để tiếp tục triển khai — 12/10/2026
 
+## Làm rõ mục tiêu — 26/10/2026
+
+Mục tiêu là hoàn thiện hệ thống cho **các cuộc họp tiếng Việt thông thường**, với
+nhận dạng, phân người nói, soát sửa, biên bản và hỏi đáp có dẫn chứng. Họp IT chỉ
+là một nhóm tình huống bổ sung; không lấy thuật ngữ IT hoặc riêng audio UIT làm
+trung tâm của bộ nghiệm thu. Cần đa dạng chủ đề, người nói, vùng giọng, điều kiện
+microphone và nói chồng.
+
+Người dùng đã yêu cầu tự tìm/tải dữ liệu công khai có nhãn, chạy đo chất lượng,
+báo cáo kết quả và đề xuất kế hoạch phù hợp phạm vi này. Lượt đánh giá ngày 26/10
+lưu riêng tại `results/general-meetings-20261026/v1/`; dùng `summary.json` và
+`selection.json` để kiểm tra tiến độ và phạm vi, không suy ra kết quả từ snapshot cũ.
+
+Lượt đo đã hoàn tất: 143 pipeline + 100 M2 + 130 đối chứng PhoWhisper, không
+có inference thất bại. Báo cáo tiếng Việt và kế hoạch ở
+`document/GENERAL_MEETING_EVALUATION_2026-10-26.md` và
+`document/GENERAL_MEETING_PLAN_2026-10-26.md`. DiCoW WER FLEURS/ViMD/VietMed
+lần lượt 14,94/20,82/24,19%; COSV full 29,17% thăm dò. ViYT all-100 DER
+14,07% strict / 7,83% relaxed; ba file chỉ có một nhãn speaker muộn cần nghe
+rà, đã đối chiếu nguyên bản parquet. Không bỏ chúng khỏi điểm chính.
+M2 riêng trùng output với full pipeline ở cả 10 mẫu đối chiếu. Qwen summary
+canary vẫn HTTP 403; chưa có semantic score downstream. 147 tests đạt, 3 skip.
+
 ## Quyết định mới nhất — chuyển mặc định sang DiCoW (18/10/2026)
 
 Người dùng yêu cầu CLI, API và Docker chuyển hoàn toàn sang DiariZen + DiCoW. `configs/default.yaml` nay là DiCoW; hệ cũ được giữ ở `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` để làm thí nghiệm trong báo cáo. Các câu “default vẫn là baseline” ở snapshot bên dưới là lịch sử, không còn mô tả cách chạy hiện tại.
