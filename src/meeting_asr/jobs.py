@@ -24,6 +24,10 @@ class RevisionConflict(ValueError):
     pass
 
 
+def participants(job):
+    return json.loads(job.get("participants") or "[]")
+
+
 def default_title(filename):
     return Path(filename).stem.replace("_", " ").strip() or filename
 
@@ -95,7 +99,15 @@ class JobStore:
             columns = {row[1] for row in db.execute("PRAGMA table_info(jobs)")}
             if "summary_template" not in columns:
                 db.execute("ALTER TABLE jobs ADD COLUMN summary_template TEXT DEFAULT 'project'")
-            for column in ("title TEXT", "finalized_revision INTEGER", "action_state TEXT"):
+            for column in (
+                "title TEXT",
+                "finalized_revision INTEGER",
+                "action_state TEXT",
+                "participants TEXT",
+                "duration REAL",
+                "started REAL",
+                "finished REAL",
+            ):
                 if column.split()[0] not in columns:
                     db.execute(f"ALTER TABLE jobs ADD COLUMN {column}")
 
@@ -150,6 +162,10 @@ class JobStore:
             "title",
             "finalized_revision",
             "action_state",
+            "participants",
+            "duration",
+            "started",
+            "finished",
         }
         if not fields or set(fields) - allowed:
             raise ValueError("invalid job update")
@@ -229,7 +245,32 @@ class JobStore:
             "title": job["title"] or default_title(job["filename"]),
             "finalized": job["finalized_revision"] == job["revision"],
             "review_turn_ids": review_turn_ids(edited),
+            "participants": participants(job),
         }
+
+    def eta(self, job):
+        """Seconds left for a pipeline job, from this machine's measured speed.
+
+        The speed is the median processing time per audio second of finished jobs (model
+        loading included), so a faster or slower GPU calibrates itself.
+        """
+        if job["kind"] != "pipeline" or job["status"] not in {"queued", "running"}:
+            return None
+        if not job.get("duration"):
+            return None
+        with self.connect() as db:
+            ratios = sorted(
+                (row[1] - row[0]) / row[2]
+                for row in db.execute(
+                    "SELECT started, finished, duration FROM jobs WHERE kind='pipeline' "
+                    "AND status='complete' AND started IS NOT NULL AND finished IS NOT NULL "
+                    "AND duration > 0 ORDER BY finished DESC LIMIT 20"
+                )
+            )
+        # ponytail: 0.35 = RTX 3050 measurement, used until this machine has its own history.
+        factor = ratios[len(ratios) // 2] if ratios else 0.35
+        elapsed = time.time() - job["started"] if job.get("started") else 0
+        return max(0, round(factor * job["duration"] - elapsed))
 
     def overview(self, job_id):
         """Library facts for one finished meeting: what is left for the user to do."""
@@ -514,7 +555,10 @@ class JobWorker:
 
     def process_one(self, job_id):
         job = self.store.get(job_id)
-        self.store.update(job_id, status="running", error=None)
+        if job["kind"] == "pipeline":
+            self.store.update(job_id, status="running", error=None, started=time.time())
+        else:
+            self.store.update(job_id, status="running", error=None)
         try:
             destination = self.store.artifact_dir(job_id)
             if job["kind"] == "summary":
@@ -557,6 +601,8 @@ class JobWorker:
                     action_state=None,
                 )
             self.store.update(job_id, status="complete", stage="complete", progress=1)
+            if job["kind"] == "pipeline":
+                self.store.update(job_id, finished=time.time())
         except Exception as exc:
             logging.getLogger(__name__).exception("Meeting job %s failed", job_id)
             self.store.update(job_id, status="failed", stage="failed", error=str(exc))

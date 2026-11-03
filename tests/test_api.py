@@ -189,3 +189,32 @@ def test_titles_finalize_action_edits_overview_and_moved_audio(tmp_path):
         assert not client.get(f"/api/jobs/{job_id}/result").json()["edited"]["action_items"][0][
             "done"
         ]
+
+
+def test_participants_and_eta_from_measured_speed(tmp_path):
+    def processor(source, config, out, progress):
+        write_minutes_json(
+            out / "minutes.json", MeetingMinutes("x", 6, 1, [Turn("0", 0, 6, "A", "Chào", [])])
+        )
+
+    app = create_app(load_config(), tmp_path, processor=processor, start_worker=False)
+    store = app.state.store
+    with TestClient(app) as client:
+        done = client.post("/api/jobs", files={"file": ("a.wav", b"RIFF")}).json()["job_id"]
+        app.state.worker.process_one(done)
+        job = store.get(done)
+        assert job["started"] and job["finished"] >= job["started"]
+        # A history of 0.5 s of processing per audio second calibrates the estimate.
+        store.update(done, duration=100.0, started=0.0, finished=50.0)
+        waiting = client.post("/api/jobs", files={"file": ("b.wav", b"RIFF")}).json()["job_id"]
+        store.update(waiting, duration=60.0)
+        assert client.get(f"/api/jobs/{waiting}").json()["eta_sec"] == 30
+        assert client.get(f"/api/jobs/{done}").json()["eta_sec"] is None
+
+        updated = client.patch(
+            f"/api/jobs/{done}", json={"participants": [" Trung ", "Đạt", "Trung"]}
+        ).json()
+        assert updated["participants"] == ["Trung", "Đạt"]
+        assert client.get(f"/api/jobs/{done}/result").json()["participants"] == ["Trung", "Đạt"]
+        too_many = client.patch(f"/api/jobs/{done}", json={"participants": ["x"] * 31})
+        assert too_many.status_code == 422
