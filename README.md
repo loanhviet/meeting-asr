@@ -10,6 +10,8 @@ Quy trình chọn decoding trên dev, bộ chấm MeetEval cpWER/tcpWER/tcORC-WE
 
 [Kết quả vòng cải thiện 1](document/ASR_IMPROVEMENT_ROUND1_2026-10-26.md): beam 3 chỉ cải thiện nhẹ trên dev; beam 5 có lỗi lặp text trên AMI. Giữ beam 1 mặc định, chưa fine-tune.
 
+Cấu hình LLM mặc định là endpoint HTTP định dạng OpenAI + `gemini-3-flash`, chọn sau khi so các model Gemini trên biên bản họp thật. Điền `MEETING_LLM_BASE_URL`/`MEETING_LLM_API_KEY` và bật LLM trong `.env` để sử dụng. Model khác dùng được qua `MEETING_LLM_MODEL`; với DeepSeek trên Alibaba nên giữ `MEETING_LLM_ENABLE_THINKING=false`.
+
 **CLI, API và Docker mặc định dùng DiariZen + DiCoW** qua `configs/default.yaml`; `configs/dicow-author.yaml` là profile tương đương để gọi tường minh. Runtime tác giả tách khỏi môi trường ứng dụng; xem [DICOW.md](DICOW.md). `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` chỉ dùng khi chủ động chạy đối chứng.
 
 Hướng phát triển đã thống nhất: DiCoW làm hướng nghiên cứu chính, giữ hệ cũ làm baseline. Đọc [CONTEXT.md](CONTEXT.md) để tiếp tục từ quyết định, kết quả và công việc còn lại của phiên 12/10/2026.

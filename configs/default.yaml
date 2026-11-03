@@ -34,8 +34,9 @@ confidence:
     dur: 0.10
 llm:
   enabled: false
-  provider: null
-  model: null
+  provider: http
+  model: gemini-3-flash
+  enable_thinking: false
   base_url: null
   api_key_env: MEETING_LLM_API_KEY
   timeout_sec: 90

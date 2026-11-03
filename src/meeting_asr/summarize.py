@@ -29,8 +29,17 @@ TEMPLATES = {
 }
 
 
+def parse_json_reply(raw):
+    """Parse a provider reply. Gemini behind OpenAI-compatible proxies sometimes ignores
+    response_format and wraps the JSON object in a markdown fence."""
+    if not isinstance(raw, str):
+        return raw
+    fenced = re.fullmatch(r"\s*```(?:json)?\s*(.*?)\s*```\s*", raw, re.DOTALL)
+    return json.loads(fenced[1] if fenced else raw)
+
+
 def validate_summary(raw: str | dict, *, allowed_turn_ids=None, require_grounded=False) -> dict:
-    payload = json.loads(raw) if isinstance(raw, str) else raw
+    payload = parse_json_reply(raw)
     legacy = {"summary", "topics", "action_items"}
     grounded = legacy | {"summary_points", "decisions"}
     if not isinstance(payload, dict) or set(payload) not in (legacy, grounded):
@@ -134,7 +143,14 @@ def _provider_error_code(body):
 
 class HTTPProvider:
     def __init__(
-        self, provider: str, base_url: str, api_key: str | None, timeout=90, max_output_tokens=1800
+        self,
+        provider: str,
+        base_url: str,
+        api_key: str | None,
+        timeout=90,
+        max_output_tokens=1800,
+        *,
+        enable_thinking: bool | None = None,
     ):
         if (
             isinstance(max_output_tokens, bool)
@@ -142,6 +158,11 @@ class HTTPProvider:
             or max_output_tokens < 1
         ):
             raise ValueError("max_output_tokens must be a positive integer")
+        if enable_thinking is not None:
+            if not isinstance(enable_thinking, bool):
+                raise ValueError("enable_thinking must be a boolean or null")
+            if provider != "http":
+                raise ValueError("enable_thinking requires the http provider")
         self.provider, self.base_url, self.api_key, self.timeout = (
             provider,
             base_url,
@@ -149,6 +170,7 @@ class HTTPProvider:
             timeout,
         )
         self.max_output_tokens = max_output_tokens
+        self.enable_thinking = enable_thinking
 
     def complete(self, prompt: str, model: str) -> str:
         if self.provider == "claude":
@@ -168,6 +190,8 @@ class HTTPProvider:
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
             }
+            if self.enable_thinking is not None:
+                payload["enable_thinking"] = self.enable_thinking
         headers["Content-Type"] = "application/json"
         request = Request(
             endpoint, data=json.dumps(payload).encode(), headers=headers, method="POST"
@@ -205,6 +229,14 @@ class Summarizer:
         self.model = os.getenv("MEETING_LLM_MODEL") or options.get("model")
         name = os.getenv("MEETING_LLM_PROVIDER") or options.get("provider")
         base_url = os.getenv("MEETING_LLM_BASE_URL") or options.get("base_url")
+        enable_thinking = options.get("enable_thinking")
+        thinking_env = os.getenv("MEETING_LLM_ENABLE_THINKING")
+        if thinking_env is not None:
+            if thinking_env.lower() not in {"true", "false", "1", "0"}:
+                raise ValueError("MEETING_LLM_ENABLE_THINKING must be true or false")
+            enable_thinking = thinking_env.lower() in {"true", "1"}
+        if enable_thinking is not None and not isinstance(enable_thinking, bool):
+            raise ValueError("enable_thinking must be a boolean or null")
         if not self.model:
             raise ValueError("configure llm.model or MEETING_LLM_MODEL")
         if provider is None:
@@ -224,6 +256,7 @@ class Summarizer:
                 key,
                 options.get("timeout_sec", 90),
                 options.get("max_output_tokens", 1800),
+                enable_thinking=enable_thinking,
             )
         self.provider = provider
         self.cache_dir = Path(cache_dir)
@@ -235,6 +268,8 @@ class Summarizer:
             "template": options.get("template", "project"),
             "max_output_tokens": options.get("max_output_tokens", 1800),
         }
+        if enable_thinking is not None:
+            self.identity["enable_thinking"] = enable_thinking
 
     def _request(self, text, allowed_turn_ids):
         template = self.identity["template"]

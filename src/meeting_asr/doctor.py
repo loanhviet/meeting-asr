@@ -26,6 +26,8 @@ def probe_llm(options):
     probe_options["timeout_sec"] = min(options.get("timeout_sec", 90), 20)
     adapter = Summarizer(probe_options, Path(".cache") / "llm-probe-unused")
     report["model"] = adapter.model
+    if "enable_thinking" in adapter.identity:
+        report["enable_thinking"] = adapter.identity["enable_thinking"]
     report["endpoint_sha256"] = hashlib.sha256(adapter.identity["base_url"].encode()).hexdigest()
     report["max_output_tokens"] = 512
     report["requests_sent"] = 1
