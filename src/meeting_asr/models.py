@@ -113,6 +113,8 @@ class Turn:
     confidence: float | None = None
     flagged: bool = False
     flag_reasons: list[str] = field(default_factory=list)
+    # Short interjection inside another speaker's speech; not a review candidate.
+    backchannel: bool = False
 
 
 @dataclass(slots=True)

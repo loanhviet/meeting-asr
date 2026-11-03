@@ -115,6 +115,7 @@ def recognize_author(audio, config, destination, *, oracle_rttm=None, progress=N
         "max_speakers": config["diarization"].get("max_speakers", 6),
         "num_beams": options.get("num_beams", 1),
         "ctc_weight": options.get("ctc_weight", 0.0),
+        "no_repeat_ngram_size": options.get("no_repeat_ngram_size", 0),
         "seed": config["seed"],
         "oracle_rttm": str(Path(oracle_rttm).resolve()) if oracle_rttm else None,
     }

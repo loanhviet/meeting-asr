@@ -168,6 +168,12 @@ def run(request):
                     task="transcribe",
                     num_beams=request["num_beams"],
                     ctc_weight=request["ctc_weight"],
+                    # Blocks decoding loops such as one syllable repeated for a whole window.
+                    **(
+                        {"no_repeat_ngram_size": request["no_repeat_ngram_size"]}
+                        if request.get("no_repeat_ngram_size")
+                        else {}
+                    ),
                 )
             text = tokenizer.batch_decode(
                 decoded["tokens"], decode_with_timestamps=True, skip_special_tokens=True
@@ -191,6 +197,7 @@ def run(request):
         "dtype": str(dtype),
         "num_beams": request["num_beams"],
         "ctc_weight": request["ctc_weight"],
+        "no_repeat_ngram_size": request.get("no_repeat_ngram_size", 0),
         "target_batch_size": 1,
         "diarization_elapsed_sec": diarization_elapsed,
         "asr_elapsed_sec": time.perf_counter() - asr_started,
