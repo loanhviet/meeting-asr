@@ -82,6 +82,10 @@ def retrieve(question: str, turns: list[dict], *, top_k=6, max_chars=12000) -> l
         }
         for turn in turns
     ]
+    # A short meeting fits whole: no ranking, so no evidence is missed (BM25 top-k missed a
+    # deadline stated in plain words on a real 15-minute meeting).
+    if sum(len(json.dumps(turn, ensure_ascii=False)) for turn in turns) <= max_chars:
+        return turns
     query = set(tokens(question))
     for token in list(query):
         query.update(tokens(ALIASES.get(token, "")))
@@ -160,15 +164,16 @@ class AskMeeting:
     def __init__(self, options: dict, cache_dir: str | Path, provider=None):
         adapter = Summarizer(options, cache_dir, provider=provider)
         self.provider, self.model = adapter.provider, adapter.model
-        self.identity = {**adapter.identity, "prompt_version": "ask-2"}
+        self.identity = {**adapter.identity, "prompt_version": "ask-3"}
         self.options = options
 
     def answer(self, question: str, turns: list[dict]) -> dict:
         if not question.strip() or len(question) > 1000:
             raise ValueError("question must contain 1–1000 characters")
-        limit = self.options.get("max_input_chars", 12000)
+        # Answers read one meeting, so a far larger budget than chunked minutes is affordable.
+        limit = self.options.get("ask_max_input_chars", 60000)
         if limit < 2000:
-            raise ValueError("max_input_chars must be at least 2000")
+            raise ValueError("ask_max_input_chars must be at least 2000")
         context = retrieve(question, turns, max_chars=limit)
         if not context:
             return {"status": "not_found", "answer_points": []}
