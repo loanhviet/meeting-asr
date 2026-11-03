@@ -14,6 +14,8 @@ def provider_provenance(answerer):
     result = {
         k: identity.get(k) for k in ("provider", "model", "prompt_version", "max_output_tokens")
     }
+    if "enable_thinking" in identity:
+        result["enable_thinking"] = identity["enable_thinking"]
     if identity.get("base_url"):
         result["endpoint_sha256"] = hashlib.sha256(identity["base_url"].encode()).hexdigest()
     return result

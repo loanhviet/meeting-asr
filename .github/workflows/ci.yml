@@ -15,6 +15,7 @@ jobs:
           python-version: "3.12"
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
       - run: uv sync --locked --extra dev --extra api
+      - run: uv venv .cache/paper-eval/venv --python .venv/bin/python && uv pip install --python .cache/paper-eval/venv/bin/python -r requirements/paper-evaluation.txt
       - run: uv run --no-sync pytest -q
       - run: uv run --no-sync ruff check src/meeting_asr tests
       - run: uv run --no-sync ruff format --check src/meeting_asr tests

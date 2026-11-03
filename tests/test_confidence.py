@@ -64,3 +64,33 @@ def test_blacklist_keeps_text_and_random_is_reproducible():
     a = score_confidence(turns, variant="baseline_random")
     b = score_confidence(turns, variant="baseline_random")
     assert a == b
+
+
+def test_decoding_loops_are_always_flagged_and_backchannels_skip_the_budget():
+    from meeting_asr.postprocess import postprocess
+
+    def utt(start, end, speaker, text, ratio=1.0):
+        return Utterance(
+            start, end, speaker, text, ASRSignals(compression_ratio=ratio), DiarSignals(0)
+        )
+
+    utterances = [
+        utt(0, 6, "A", "nhà em ở gần chợ nên mọi thứ rất nhộn nhịp"),
+        utt(5.6, 6.1, "B", "ừ"),
+        utt(6.4, 12, "A", "mọi người hay nói chuyện với nhau"),
+        utt(12.5, 43, "A", "ừ " * 200, ratio=44.0),
+        utt(44, 45, "B", "không"),
+    ]
+    turns = postprocess(utterances)
+    # A's speech is no longer split by B's "ừ"; the interjection stays a separate turn.
+    assert [(t.speaker, t.backchannel) for t in turns] == [
+        ("A", False),
+        ("B", True),
+        ("B", False),
+    ]
+    assert "nhộn nhịp mọi người" in turns[0].text
+    scored = score_confidence(turns, target_coverage=0.0)
+    # The loop is inside A's first turn: flagged even with a zero review budget.
+    assert scored[0].flagged and "nghi lặp/ảo giác" in scored[0].flag_reasons
+    assert not scored[1].flagged
+    assert not score_confidence(turns, target_coverage=0.0, variant="no_diar")[0].flagged

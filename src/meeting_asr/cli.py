@@ -485,18 +485,70 @@ def main(argv: list[str] | None = None) -> int:
 
     suite_parser.set_defaults(handler=run_suite)
     llm_parser = subcommands.add_parser(
-        "llm-check", help="check provider configuration without requests"
+        "llm-check", help="check configuration, or send one request with --probe"
     )
     llm_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    llm_parser.add_argument(
+        "--probe", action="store_true", help="send one short configured-provider request"
+    )
+    llm_parser.add_argument("--out", type=Path, help="write the credential-free readiness report")
 
     def run_llm_check(args):
         from meeting_asr.evaluation.acceptance import llm_readiness
 
-        report = llm_readiness(load_config(args.config)["llm"])
+        options = load_config(args.config)["llm"]
+        if args.probe:
+            from meeting_asr.doctor import probe_llm
+
+            report = probe_llm(options)
+        else:
+            report = llm_readiness(options)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready"] else 2
 
     llm_parser.set_defaults(handler=run_llm_check)
+    correction_parser = subcommands.add_parser(
+        "correct-transcript", help="propose bounded LLM text corrections in a separate artifact"
+    )
+    correction_parser.add_argument("transcript")
+    correction_parser.add_argument("--api-key-csv", required=True)
+    correction_parser.add_argument("--model", default="kimi-k3")
+    correction_parser.add_argument("--out", required=True)
+    correction_parser.add_argument("--context", default="")
+    correction_parser.add_argument("--glossary", help="JSON array of independently supplied terms")
+    correction_parser.add_argument("--cache-dir")
+    correction_parser.add_argument("--max-output-tokens", type=int, default=4096)
+
+    def run_correction(args):
+        from meeting_asr.correction import KimiProvider, correct_document
+
+        provider = KimiProvider.from_csv(
+            args.api_key_csv, model=args.model, max_output_tokens=args.max_output_tokens
+        )
+        glossary = json.loads(Path(args.glossary).read_text()) if args.glossary else []
+        result = correct_document(
+            args.transcript,
+            args.out,
+            provider,
+            context=args.context,
+            glossary=glossary,
+            cache_dir=args.cache_dir,
+        )
+        print(
+            json.dumps(
+                {
+                    "turns": len(result["suggestions"]),
+                    "suggestions": sum(bool(s["edits"]) for s in result["suggestions"]),
+                    "out": str(Path(args.out).resolve()),
+                }
+            )
+        )
+        return 0
+
+    correction_parser.set_defaults(handler=run_correction)
     acceptance_parser = subcommands.add_parser(
         "evaluate-meetings", help="evaluate supplied meetings and LLM outputs"
     )

@@ -1,0 +1,366 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-22",
+  "sources": [
+    {
+      "dataset": "vietmed",
+      "repository": "leduckhai/VietMed",
+      "revision": "f302146de79c5cbd6a7d14400fefa2c8cfda7738",
+      "license": "mit"
+    },
+    {
+      "dataset": "fleurs_vi",
+      "repository": "google/fleurs",
+      "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "license": [
+        "cc-by-4.0"
+      ]
+    },
+    {
+      "dataset": "vimd",
+      "repository": "nguyendv02/ViMD_Dataset",
+      "revision": "3a5b30157034e7eadd5c75fae1a820c6f9383398",
+      "license": "cc-by-nc-nd-4.0"
+    },
+    {
+      "dataset": "viyt_diar",
+      "repository": "tuanduy1612/ViYT-Diar",
+      "revision": "c66b118709d68c7538408d086232d850356db374",
+      "license": "apache-2.0"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "repository": "leduckhai/VietMed-Sum",
+      "revision": "527a7a496ea30f5d20e5ccb85e59caa7d43b6839",
+      "license": null
+    },
+    {
+      "dataset": "vivos",
+      "repository": "AILAB-VNUHCM/vivos",
+      "revision": "3cbfb2502e5e84776b4b778b020a09759f723f52",
+      "license": [
+        "cc-by-nc-sa-4.0"
+      ]
+    },
+    {
+      "dataset": "qmsum",
+      "repository": "Yale-LILY/QMSum",
+      "revision": "83d7768c1f2b4dfeb091385d3dc7e239b8e5bb7e",
+      "license": "MIT repository; retain original corpus terms"
+    }
+  ],
+  "files": [
+    {
+      "dataset": "vietmed",
+      "upstream_path": "README.md",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed/resolve/f302146de79c5cbd6a7d14400fefa2c8cfda7738/README.md",
+      "local_path": "sources/vietmed/README.md",
+      "bytes": 3543,
+      "sha256": "1933a9fd617962eff528c4fb7ee530ab9c3fa970da633bb435d3d5149d23e9a5"
+    },
+    {
+      "dataset": "vietmed",
+      "upstream_path": "data/dev-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed/resolve/f302146de79c5cbd6a7d14400fefa2c8cfda7738/data/dev-00000-of-00001.parquet",
+      "local_path": "sources/vietmed/dev-00000-of-00001.parquet",
+      "bytes": 57059580,
+      "sha256": "ddbce77039a150053a3a6dbe7c92c8f07a7924537a4681a1a1788aa2f917b18b"
+    },
+    {
+      "dataset": "vietmed",
+      "upstream_path": "data/test-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed/resolve/f302146de79c5cbd6a7d14400fefa2c8cfda7738/data/test-00000-of-00001.parquet",
+      "local_path": "sources/vietmed/test-00000-of-00001.parquet",
+      "bytes": 68997494,
+      "sha256": "275b205059e1e4e0ef88eb7bae3cf14287de456752e74a57e0c10476725b4a22"
+    },
+    {
+      "dataset": "fleurs_vi",
+      "upstream_path": "README.md",
+      "url": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/README.md",
+      "local_path": "sources/fleurs_vi/README.md",
+      "bytes": 385614,
+      "sha256": "688f79f2a5c731af3796e9f683eb02f9b3f09d040decd8c5625d0f37098e71c6"
+    },
+    {
+      "dataset": "fleurs_vi",
+      "upstream_path": "data/vi_vn/audio/dev.tar.gz",
+      "url": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/vi_vn/audio/dev.tar.gz",
+      "local_path": "sources/fleurs_vi/data/vi_vn/audio/dev.tar.gz",
+      "bytes": 214500592,
+      "sha256": "8821a394c99069409b3ce7bb5cd14b10b709f2ee2fea16f42b4701e1cc9ef673"
+    },
+    {
+      "dataset": "fleurs_vi",
+      "upstream_path": "data/vi_vn/audio/test.tar.gz",
+      "url": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/vi_vn/audio/test.tar.gz",
+      "local_path": "sources/fleurs_vi/data/vi_vn/audio/test.tar.gz",
+      "bytes": 544139865,
+      "sha256": "b359261216ef14b8eea159abce794e270c2a0be903218cf1e1e8f7c7c1565b5c"
+    },
+    {
+      "dataset": "fleurs_vi",
+      "upstream_path": "data/vi_vn/dev.tsv",
+      "url": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/vi_vn/dev.tsv",
+      "local_path": "sources/fleurs_vi/data/vi_vn/dev.tsv",
+      "bytes": 247001,
+      "sha256": "c9bc17cede9765b1c75cb7a608f7066cb6bb6f8245cc75d721a5217a5dffb414"
+    },
+    {
+      "dataset": "fleurs_vi",
+      "upstream_path": "data/vi_vn/test.tsv",
+      "url": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/vi_vn/test.tsv",
+      "local_path": "sources/fleurs_vi/data/vi_vn/test.tsv",
+      "bytes": 613728,
+      "sha256": "eb744c2be5f677b49c35527d428a4f647294bd0f67abd790c296e91efaaffb93"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "README.md",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/README.md",
+      "local_path": "sources/vimd/README.md",
+      "bytes": 7475,
+      "sha256": "86f02aa89481a1d0c2615956567c28e76c3438f7661005628c028825e7d053bc"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00000-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00000-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00000-of-00014.parquet",
+      "bytes": 430095994,
+      "sha256": "e3df51b347bb4909b01083d7e134206553deae1afb4f1430ff69340ea69d6369"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00001-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00001-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00001-of-00014.parquet",
+      "bytes": 469677893,
+      "sha256": "0520fb3d6666e1804ad5d65529bc21c93628b3cc928bcc82276d72b8b8458d6c"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00002-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00002-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00002-of-00014.parquet",
+      "bytes": 418649912,
+      "sha256": "c484bb6496563d5d62fe111986d6bb71446bf2de80a8aad2e3afe4aec56fd1db"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00003-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00003-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00003-of-00014.parquet",
+      "bytes": 458252181,
+      "sha256": "a7e24f9f4fc7b9be63409103eb41451a4199c49ca51f7cf12ef448f99fc13518"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00004-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00004-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00004-of-00014.parquet",
+      "bytes": 425366117,
+      "sha256": "560557ff21b7d1ee0966e7040750b6fab1b59e4e21acce727c732d3e5802ff57"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00005-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00005-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00005-of-00014.parquet",
+      "bytes": 404756514,
+      "sha256": "e9890171776d437608a8612b670ef263c0cbc4cce32661364589e48f3c90228c"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00006-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00006-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00006-of-00014.parquet",
+      "bytes": 461551153,
+      "sha256": "965f53016e364c732090db2aa9510f12ac26d89c5236dcf5ea8cd2cce0601a58"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00007-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00007-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00007-of-00014.parquet",
+      "bytes": 500765926,
+      "sha256": "1b2090a1b93c657e9c5a1a564ab289eefc3fdcdaaf7ee000bdd4117b2175f84f"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00008-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00008-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00008-of-00014.parquet",
+      "bytes": 463369845,
+      "sha256": "d617472eb2880ed1c74352381f3158cf77891694e6647f4c01dd547ce18107eb"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00009-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00009-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00009-of-00014.parquet",
+      "bytes": 449628130,
+      "sha256": "fadb8b19c8bc2bc62165de5bbf4066b72351a5b9b025d129c725c7f8adff4f8d"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00010-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00010-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00010-of-00014.parquet",
+      "bytes": 426638913,
+      "sha256": "32ae6182cdc09e91f65f2b5867ebbc0fe19ceb2016ad59f57e5fc626319a8fb4"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00011-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00011-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00011-of-00014.parquet",
+      "bytes": 389712319,
+      "sha256": "2cd7184e665811b6df5ecabad4c72ca21d8f89ed32aa7a59e590cd95ed44cbc5"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00012-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00012-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00012-of-00014.parquet",
+      "bytes": 478749861,
+      "sha256": "ee1cfccae0618ec5cb6e9053e2e9ee4dcb45a163d2755e281720f981c4c97826"
+    },
+    {
+      "dataset": "vimd",
+      "upstream_path": "data/test-00013-of-00014.parquet",
+      "url": "https://huggingface.co/datasets/nguyendv02/ViMD_Dataset/resolve/3a5b30157034e7eadd5c75fae1a820c6f9383398/data/test-00013-of-00014.parquet",
+      "local_path": "sources/vimd/data/test-00013-of-00014.parquet",
+      "bytes": 451834713,
+      "sha256": "4f83997a860facdfab0bd3f12d0ce9a67afdac309bc7cb77359eb4d92771fdab"
+    },
+    {
+      "dataset": "viyt_diar",
+      "upstream_path": "README.md",
+      "url": "https://huggingface.co/datasets/tuanduy1612/ViYT-Diar/resolve/c66b118709d68c7538408d086232d850356db374/README.md",
+      "local_path": "sources/viyt_diar/README.md",
+      "bytes": 3718,
+      "sha256": "f0efad726d5f05c131f36b115ba188212cd072e1a70b2d59e8e04270b6c42860"
+    },
+    {
+      "dataset": "viyt_diar",
+      "upstream_path": "data/test-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/tuanduy1612/ViYT-Diar/resolve/c66b118709d68c7538408d086232d850356db374/data/test-00000-of-00001.parquet",
+      "local_path": "sources/viyt_diar/data/test-00000-of-00001.parquet",
+      "bytes": 307689902,
+      "sha256": "08d1667162b775d837ea49c4080d9ff470abeeaa7abcbe0cd92b012152c4fbbf"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "upstream_path": "README.md",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed-Sum/resolve/527a7a496ea30f5d20e5ccb85e59caa7d43b6839/README.md",
+      "local_path": "sources/vietmed_sum/README.md",
+      "bytes": 2222,
+      "sha256": "07900ddc29e13dbdd9cb5d92d1ffe9f2d1b341119e2854d2411a0c7c1c1f4216"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "upstream_path": "data/dev.dev_30s-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed-Sum/resolve/527a7a496ea30f5d20e5ccb85e59caa7d43b6839/data/dev.dev_30s-00000-of-00001.parquet",
+      "local_path": "sources/vietmed_sum/data/dev.dev_30s-00000-of-00001.parquet",
+      "bytes": 236146,
+      "sha256": "dea81a3d6a5169bf9c5264edd0c66fea9ec0fc68e9f2cd311adf652ecca0236a"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "upstream_path": "data/dev.dev_full_dialogue-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed-Sum/resolve/527a7a496ea30f5d20e5ccb85e59caa7d43b6839/data/dev.dev_full_dialogue-00000-of-00001.parquet",
+      "local_path": "sources/vietmed_sum/data/dev.dev_full_dialogue-00000-of-00001.parquet",
+      "bytes": 239279,
+      "sha256": "9566d49555f36e97bcf58e5460ed5b9717349f6dd6d970306d7699f06ba703dc"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "upstream_path": "data/test.test_30s-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed-Sum/resolve/527a7a496ea30f5d20e5ccb85e59caa7d43b6839/data/test.test_30s-00000-of-00001.parquet",
+      "local_path": "sources/vietmed_sum/data/test.test_30s-00000-of-00001.parquet",
+      "bytes": 312805,
+      "sha256": "87d71ba6797825bb358b4d1b6e818f9550944e8c332b566d1323fe6689b6408c"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "upstream_path": "data/test.test_30s_asr-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed-Sum/resolve/527a7a496ea30f5d20e5ccb85e59caa7d43b6839/data/test.test_30s_asr-00000-of-00001.parquet",
+      "local_path": "sources/vietmed_sum/data/test.test_30s_asr-00000-of-00001.parquet",
+      "bytes": 244025,
+      "sha256": "9201cb04747fe729c5f6ab82cd12ba7dc809bc43e5170ce9230d3cf7bc3b3b4e"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "upstream_path": "data/test.test_full_dialogue-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed-Sum/resolve/527a7a496ea30f5d20e5ccb85e59caa7d43b6839/data/test.test_full_dialogue-00000-of-00001.parquet",
+      "local_path": "sources/vietmed_sum/data/test.test_full_dialogue-00000-of-00001.parquet",
+      "bytes": 257477,
+      "sha256": "c477054b21c183ecf1326d2172455260edaf65a507989a6ce1fb81644c4f81ca"
+    },
+    {
+      "dataset": "vietmed_sum",
+      "upstream_path": "data/test.test_full_dialogue_asr-00000-of-00001.parquet",
+      "url": "https://huggingface.co/datasets/leduckhai/VietMed-Sum/resolve/527a7a496ea30f5d20e5ccb85e59caa7d43b6839/data/test.test_full_dialogue_asr-00000-of-00001.parquet",
+      "local_path": "sources/vietmed_sum/data/test.test_full_dialogue_asr-00000-of-00001.parquet",
+      "bytes": 232084,
+      "sha256": "f0a20abaaf71215971018f10f3a1155bf821c8a5a5a61e9b14d8c3079f915e90"
+    },
+    {
+      "dataset": "vivos",
+      "upstream_path": "README.md",
+      "url": "https://huggingface.co/datasets/AILAB-VNUHCM/vivos/resolve/3cbfb2502e5e84776b4b778b020a09759f723f52/README.md",
+      "local_path": "sources/vivos/README.md",
+      "bytes": 6998,
+      "sha256": "288daaa4bc12f407de05ab3ea5dc0c19bd73660c48e57b04a16f47b0b7e4f757"
+    },
+    {
+      "dataset": "vivos",
+      "upstream_path": "data/prompts-test.txt.gz",
+      "url": "https://huggingface.co/datasets/AILAB-VNUHCM/vivos/resolve/3cbfb2502e5e84776b4b778b020a09759f723f52/data/prompts-test.txt.gz",
+      "local_path": "sources/vivos/data/prompts-test.txt.gz",
+      "bytes": 19684,
+      "sha256": "c2e72704d07041077a2a11b42be0128ecae8c33b5976305f2ea38b96297bcf9b"
+    },
+    {
+      "dataset": "qmsum",
+      "upstream_path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/Yale-LILY/QMSum/83d7768c1f2b4dfeb091385d3dc7e239b8e5bb7e/LICENSE",
+      "local_path": "sources/qmsum/LICENSE",
+      "bytes": 1066,
+      "sha256": "8308d90c6321345cbd4adc8b479ddbece28ddbdca44f3f0b9bf033c3999a4a80"
+    },
+    {
+      "dataset": "qmsum",
+      "upstream_path": "README.md",
+      "url": "https://raw.githubusercontent.com/Yale-LILY/QMSum/83d7768c1f2b4dfeb091385d3dc7e239b8e5bb7e/README.md",
+      "local_path": "sources/qmsum/README.md",
+      "bytes": 5959,
+      "sha256": "b3b08634fe1cafc16ba6d5a4d26deb25c43cd2e676fed28921323195ce3592b2"
+    },
+    {
+      "dataset": "qmsum",
+      "upstream_path": "data/ALL/jsonl/test.jsonl",
+      "url": "https://raw.githubusercontent.com/Yale-LILY/QMSum/83d7768c1f2b4dfeb091385d3dc7e239b8e5bb7e/data/ALL/jsonl/test.jsonl",
+      "local_path": "sources/qmsum/data/ALL/jsonl/test.jsonl",
+      "bytes": 2746108,
+      "sha256": "6bcd428211260ad2efae3af76cbaf6a7f5ae4bb5e1e59c45a4b8e89539cb9208"
+    },
+    {
+      "dataset": "qmsum",
+      "upstream_path": "data/ALL/jsonl/train.jsonl",
+      "url": "https://raw.githubusercontent.com/Yale-LILY/QMSum/83d7768c1f2b4dfeb091385d3dc7e239b8e5bb7e/data/ALL/jsonl/train.jsonl",
+      "local_path": "sources/qmsum/data/ALL/jsonl/train.jsonl",
+      "bytes": 11940700,
+      "sha256": "55964a968e4b4c1c9da2434678f213f3b70c0c3d3cf609f5cd4ecd44cc8d2427"
+    },
+    {
+      "dataset": "qmsum",
+      "upstream_path": "data/ALL/jsonl/val.jsonl",
+      "url": "https://raw.githubusercontent.com/Yale-LILY/QMSum/83d7768c1f2b4dfeb091385d3dc7e239b8e5bb7e/data/ALL/jsonl/val.jsonl",
+      "local_path": "sources/qmsum/data/ALL/jsonl/val.jsonl",
+      "bytes": 2714748,
+      "sha256": "fc7444e241bdbe6997c01720d07f1a58b7357284acb73f909766e5a4700db49f"
+    }
+  ]
+}

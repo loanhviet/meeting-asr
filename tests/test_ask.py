@@ -97,7 +97,9 @@ def test_retrieval_diacritics_aliases_neighbors_long_turn_and_prompt_budget():
     assert "Hạn kiểm thử là thứ Năm" in next(t["text"] for t in result if t["turn_id"] == "10")
     assert "BÍ MẬT" not in json.dumps(result, ensure_ascii=False)
     assert len(json.dumps(result, ensure_ascii=False)) < 6500
-    assert retrieve("ngân sách?", turns) == []
+    assert retrieve("ngân sách?", turns, max_chars=6000) == []
+    # A transcript within budget is returned whole, so ranking cannot drop the evidence.
+    assert [t["turn_id"] for t in retrieve("ngân sách?", turns[:3])] == ["0", "1", "2"]
 
 
 def test_api_answers_review_sources_history_persistence_cache_and_edit(tmp_path):
@@ -129,9 +131,7 @@ def test_api_missing_answers_and_invalid_retry(tmp_path):
     app = make_app(tmp_path, provider)
     with TestClient(app) as client:
         path = "/api/jobs/meeting/questions"
-        # Zero lexical matches avoids a provider request.
-        answer = client.post(path, json={"question": "ngân sách?", "expected_revision": 0}).json()
-        assert answer["status"] == "not_found" and not provider.prompts
+        # Short meetings are sent whole: the model, not lexical overlap, decides "not found".
         answer = client.post(
             path, json={"question": "Hạn kiểm thử?", "expected_revision": 0}
         ).json()
@@ -205,7 +205,7 @@ def test_result_revision_and_edits_share_one_database_snapshot(tmp_path, monkeyp
 
 
 def test_repeated_question_reuses_provider_and_moves_to_recent_history(tmp_path):
-    provider = Provider([point()])
+    provider = Provider([point(), {"status": "not_found", "answer_points": []}])
     app = make_app(tmp_path, provider)
     with TestClient(app) as client:
         path = "/api/jobs/meeting/questions"
@@ -216,4 +216,4 @@ def test_repeated_question_reuses_provider_and_moves_to_recent_history(tmp_path)
         repeat = client.post(path, json=body).json()
         assert repeat["id"] == first["id"] and repeat["created"] > missing["created"]
         assert client.get(path).json()[0]["id"] == first["id"]
-        assert len(provider.prompts) == 1
+        assert len(provider.prompts) == 2

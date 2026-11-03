@@ -10,6 +10,10 @@ from meeting_asr.models import Turn, Utterance
 
 DEFAULT_WEIGHTS = {"asr": 0.3, "speech": 0.1, "rep": 0.1, "ovl": 0.25, "spk": 0.15, "dur": 0.1}
 VARIANTS = ("baseline_random", "baseline_asr_only", "no_diar", "full")
+# Whisper's compression-ratio threshold. On real meetings DiCoW decoding loops reach 14-46 yet the
+# weighted score stayed ~0.6, so `full` treats them like a known hallucination: always reviewed.
+REPEAT_RATIO = 2.4
+FORCED_CONFIDENCE = 0.05
 BLACKLIST = (
     "cảm ơn các bạn đã xem",
     "hãy đăng ký kênh",
@@ -50,8 +54,9 @@ def select_review(turns: list[Turn], target_coverage=0.2) -> set[str]:
         raise ValueError("target_coverage must be in [0, 1]")
     budget = target_coverage * sum(t.end - t.start for t in turns)
     chosen = set()
+    candidates = [t for t in turns if not t.backchannel]
     for turn in sorted(
-        turns, key=lambda t: (t.confidence if t.confidence is not None else 0.5, t.turn_id)
+        candidates, key=lambda t: (t.confidence if t.confidence is not None else 0.5, t.turn_id)
     ):
         duration = turn.end - turn.start
         if duration <= 0:
@@ -112,12 +117,21 @@ def score_confidence(
         if variant == "full" and any(
             phrase in " ".join(u.text.casefold() for u in turn.utterances) for phrase in BLACKLIST
         ):
-            turn.confidence = min(turn.confidence, 0.05)
+            turn.confidence = min(turn.confidence, FORCED_CONFIDENCE)
             turn.flag_reasons.append("nghi cụm ảo giác đã biết")
+        if variant == "full" and any(
+            (u.asr.compression_ratio or 0) > REPEAT_RATIO for u in turn.utterances
+        ):
+            turn.confidence = min(turn.confidence, FORCED_CONFIDENCE)
+            if REASONS["rep"] not in turn.flag_reasons:
+                turn.flag_reasons.append(REASONS["rep"])
         if variant == "baseline_random":
             turn.confidence = rng.random()
             turn.flag_reasons = ["chọn ngẫu nhiên để đối chiếu"]
     selected = select_review(result, target_coverage)
+    if variant == "full":
+        # Forced turns are flagged even beyond the budget, so coverage can exceed target_coverage.
+        selected |= {t.turn_id for t in result if t.confidence <= FORCED_CONFIDENCE}
     for turn in result:
         turn.flagged = turn.turn_id in selected
     return result

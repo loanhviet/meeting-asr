@@ -1,0 +1,67 @@
+# Selected on development data; general-meeting acceptance remains separate.
+asr:
+  batch_size: 1
+  engine: dicow
+  language: vi
+  masking: none
+  model_name: BUT-FIT/DiCoW_v3_MLC
+confidence:
+  margin_ref: null
+  target_coverage: 0.2
+  variant: full
+  weights:
+    asr: 0.3
+    dur: 0.1
+    ovl: 0.25
+    rep: 0.1
+    speech: 0.1
+    spk: 0.15
+diarization:
+  backend: diarizen
+  max_speakers: 6
+  min_segment_duration: 0.3
+  min_speakers: null
+  model_name: BUT-FIT/diarizen-wavlm-large-s80-md
+dicow:
+  ctc_weight: 0.0
+  diarization_batch_size: 1
+  diarization_revision: 6285693ddd5b38e8229acb93f864f3d04a82bee1
+  embedding_revision: 837717ddb9ff5507820346191109dc79c958d614
+  model_revision: 99c64e8dc409a158816e808a1ee556cdfd0af51c
+  num_beams: 3
+  python: .cache/dicow/venv/bin/python
+  runtime_manifest: .cache/dicow/runtime.json
+  upstream_dir: .cache/dicow/upstream/DiCoW
+evaluation:
+  der_collar:
+  - 0.25
+  - 0.0
+  skip_overlap:
+  - true
+  - false
+  turn_wer_threshold:
+  - 0.2
+  - 0.3
+  - 0.5
+llm:
+  api_key_env: MEETING_LLM_API_KEY
+  base_url: null
+  enabled: false
+  model: null
+  provider: null
+  timeout_sec: 90
+paths:
+  cache_dir: ./.cache
+  data_dir: ./data
+  results_dir: ./results
+postprocess:
+  merge_gap: 0.8
+  remove_fillers: false
+preprocess:
+  denoise: false
+  max_duration_sec: 1800
+  normalize: true
+  target_sr: 16000
+runtime:
+  device: auto
+seed: 42

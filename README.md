@@ -6,6 +6,12 @@ Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm
 
 Kết quả DiCoW và giới hạn: [DICOW_COMPARISON.md](DICOW_COMPARISON.md). [RELEASE_STATUS.md](RELEASE_STATUS.md) giữ snapshot hệ cũ ngày 06/10. Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](ACCEPTANCE.md). Có [sơ đồ kiến trúc](ARCHITECTURE.md) và [README tiếng Anh](README.en.md).
 
+Quy trình chọn decoding trên dev, bộ chấm MeetEval cpWER/tcpWER/tcORC-WER và kiểm tra API thật bằng `llm-check --probe`: [ASR_IMPROVEMENT_WORKFLOW.md](document/ASR_IMPROVEMENT_WORKFLOW.md).
+
+[Kết quả vòng cải thiện 1](document/ASR_IMPROVEMENT_ROUND1_2026-10-26.md): beam 3 chỉ cải thiện nhẹ trên dev; beam 5 có lỗi lặp text trên AMI. Giữ beam 1 mặc định, chưa fine-tune.
+
+Cấu hình LLM mặc định là endpoint HTTP định dạng OpenAI + `gemini-3-flash`, chọn sau khi so các model Gemini trên biên bản họp thật. Điền `MEETING_LLM_BASE_URL`/`MEETING_LLM_API_KEY` và bật LLM trong `.env` để sử dụng. Model khác dùng được qua `MEETING_LLM_MODEL`; với DeepSeek trên Alibaba nên giữ `MEETING_LLM_ENABLE_THINKING=false`.
+
 **CLI, API và Docker mặc định dùng DiariZen + DiCoW** qua `configs/default.yaml`; `configs/dicow-author.yaml` là profile tương đương để gọi tường minh. Runtime tác giả tách khỏi môi trường ứng dụng; xem [DICOW.md](DICOW.md). `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` chỉ dùng khi chủ động chạy đối chứng.
 
 Hướng phát triển đã thống nhất: DiCoW làm hướng nghiên cứu chính, giữ hệ cũ làm baseline. Đọc [CONTEXT.md](CONTEXT.md) để tiếp tục từ quyết định, kết quả và công việc còn lại của phiên 12/10/2026.
@@ -95,3 +101,15 @@ uv run --no-sync meeting-asr run /duong/dan/meeting.wav --config configs/improve
 `diarization.ecapa.clean_clustering` cho phép tạo cụm từ cửa sổ đủ dài, không có chồng lấn do detector dự đoán, rồi gán các cửa sổ còn lại vào cụm. `asr.merge_same_speaker_gap` nối các mảnh gần nhau của cùng người nói trước khi phiên âm nếu không có người khác nói trong khoảng nghỉ; RTTM dự đoán gốc vẫn dùng để tính DER. Các tùy chọn này thuộc baseline cũ; profile Pyannote giữ chúng tắt để tái lập thí nghiệm.
 
 Trong manifest thí nghiệm có thể đặt riêng `oracle_rttm` cho ngữ cảnh ASR. `reference_rttm` vẫn là nhãn speech dùng để chấm DER. Các nhãn speech tự động đề xuất phải được nghe kiểm tra trước khi dùng làm kết quả chính thức.
+
+## Gợi ý hiệu chỉnh transcript theo ngữ cảnh
+
+`correct-transcript` gọi Kimi K3 để đề xuất sửa các cụm ngắn, kiểm tra patch bằng code và lưu kết quả review vào file riêng. Nhận credential từ CSV export của Alibaba Cloud:
+
+```bash
+uv run --no-sync meeting-asr correct-transcript results/demo/transcript.json \
+  --api-key-csv /duong/dan/api-key.csv --model kimi-k3 \
+  --out results/demo/correction-suggestions.json
+```
+
+Xem [hướng dẫn hiệu chỉnh và phép so sánh dev](document/LLM_CORRECTION_2026-10-22.md). Gợi ý giữ hash của text nguồn và cần người nghe kiểm tra trước khi chấp nhận.

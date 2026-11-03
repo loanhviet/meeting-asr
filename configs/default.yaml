@@ -34,8 +34,9 @@ confidence:
     dur: 0.10
 llm:
   enabled: false
-  provider: null
-  model: null
+  provider: http
+  model: gemini-3-flash
+  enable_thinking: false
   base_url: null
   api_key_env: MEETING_LLM_API_KEY
   timeout_sec: 90
@@ -58,3 +59,7 @@ dicow:
   num_beams: 1
   # The author's multilingual experiment uses joint CTC decoding for English.
   ctc_weight: 0.0
+  # Forbid repeating any 6-token sequence (about 2-4 syllables). Removes DiCoW decoding loops on real
+  # meetings; costs WER +0.15 (COSV), +0.6 (ViMD), 0 (FLEURS, VietMed). n=16 let loops through.
+  # Temperature fallback would be the usual fix but crashes on the author's pinned transformers.
+  no_repeat_ngram_size: 6

@@ -1,5 +1,57 @@
 # Context để tiếp tục triển khai — 12/10/2026
 
+## Vòng cải thiện 1 đã hoàn tất — 26/10/2026
+
+Người dùng đã duyệt tự triển khai trên branch mới `feat/asr-quality-improvement`.
+Baseline evaluation được lưu ở commit `3908a04`; chẩn đoán LLM ở `bb302fe`,
+scorer/dev grid ở `6804966`. Báo cáo đầy đủ cùng evidence JSON ở
+`document/ASR_IMPROVEMENT_ROUND1_2026-10-26.{md,json}`; cách tái chạy ở
+`document/ASR_IMPROVEMENT_WORKFLOW.md`.
+
+Đã chạy 123 full pipeline DiCoW (41 dev × beam 1/3/5) và 40 đối chứng
+PhoWhisper, không lỗi inference. Dev mới gồm 20 FLEURS + 20 VietMed + AMI
+ES2011a room-mic 179,34 giây; không tuning test cũ. Tải thêm 58,54 MB theo
+lock, model giữ cache/runtime tác giả. MeetEval 0.4.3 chấm cpWER/tcpWER/
+tcORC-WER, collar 5 giây, timing nội suy từ utterance; không gọi là tái lập
+benchmark paper.
+
+Beam 3 được chọn làm ứng viên dev: FLEURS WER giữ 14,49%, VietMed 23,49%
+→ 23,28% so với beam 1, tổng chỉ giảm một lỗi. AMI tcpWER 24,00% → 22,55%.
+Beam 5 lặp text hàng trăm lần trên AMI, WER 185,82%, bị loại. Profile thử ở
+`configs/recommended-dicow-round1.yaml`; **mặc định vẫn beam 1**. PhoWhisper
+dev FLEURS 14,20%, VietMed 26,40%, nên không đổi backend chung theo clip ngắn.
+
+Đã có `llm-check --probe --out ...`, một prompt tĩnh ngắn, không transcript;
+vòng này gọi thật một lần, nhận HTTP 403 `insufficient_quota`. Cần quota/
+credential hợp lệ trước đánh giá semantic. Không tự đổi provider hoặc mua
+GPU/API. 169 tests đạt, 3 skip; Ruff và wheel/sdist build đạt. Chưa training,
+chưa nghe rà/gán nhãn độc lập. Tiếp theo ưu tiên bộ 8 họp tiếng Việt có
+tham chiếu đã soát, tách 4 dev/4 test theo recording; nghe rà 3 ViYT đã đánh
+dấu; rồi đo công sửa, biên bản/hỏi đáp và mới cân nhắc pilot fine-tune.
+
+## Làm rõ mục tiêu — 26/10/2026
+
+Mục tiêu là hoàn thiện hệ thống cho **các cuộc họp tiếng Việt thông thường**, với
+nhận dạng, phân người nói, soát sửa, biên bản và hỏi đáp có dẫn chứng. Họp IT chỉ
+là một nhóm tình huống bổ sung; không lấy thuật ngữ IT hoặc riêng audio UIT làm
+trung tâm của bộ nghiệm thu. Cần đa dạng chủ đề, người nói, vùng giọng, điều kiện
+microphone và nói chồng.
+
+Người dùng đã yêu cầu tự tìm/tải dữ liệu công khai có nhãn, chạy đo chất lượng,
+báo cáo kết quả và đề xuất kế hoạch phù hợp phạm vi này. Lượt đánh giá ngày 26/10
+lưu riêng tại `results/general-meetings-20261026/v1/`; dùng `summary.json` và
+`selection.json` để kiểm tra tiến độ và phạm vi, không suy ra kết quả từ snapshot cũ.
+
+Lượt đo đã hoàn tất: 143 pipeline + 100 M2 + 130 đối chứng PhoWhisper, không
+có inference thất bại. Báo cáo tiếng Việt và kế hoạch ở
+`document/GENERAL_MEETING_EVALUATION_2026-10-26.md` và
+`document/GENERAL_MEETING_PLAN_2026-10-26.md`. DiCoW WER FLEURS/ViMD/VietMed
+lần lượt 14,94/20,82/24,19%; COSV full 29,17% thăm dò. ViYT all-100 DER
+14,07% strict / 7,83% relaxed; ba file chỉ có một nhãn speaker muộn cần nghe
+rà, đã đối chiếu nguyên bản parquet. Không bỏ chúng khỏi điểm chính.
+M2 riêng trùng output với full pipeline ở cả 10 mẫu đối chiếu. Qwen summary
+canary vẫn HTTP 403; chưa có semantic score downstream. 147 tests đạt, 3 skip.
+
 ## Quyết định mới nhất — chuyển mặc định sang DiCoW (18/10/2026)
 
 Người dùng yêu cầu CLI, API và Docker chuyển hoàn toàn sang DiariZen + DiCoW. `configs/default.yaml` nay là DiCoW; hệ cũ được giữ ở `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` để làm thí nghiệm trong báo cáo. Các câu “default vẫn là baseline” ở snapshot bên dưới là lịch sử, không còn mô tả cách chạy hiện tại.
