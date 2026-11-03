@@ -14,6 +14,7 @@ from pathlib import Path
 
 from filelock import FileLock
 
+from meeting_asr.confidence import REASONS
 from meeting_asr.io import minutes_from_dict
 from meeting_asr.pipeline import project_path, run_pipeline
 from meeting_asr.summarize import resolve_evidence
@@ -21,6 +22,34 @@ from meeting_asr.summarize import resolve_evidence
 
 class RevisionConflict(ValueError):
     pass
+
+
+def default_title(filename):
+    return Path(filename).stem.replace("_", " ").strip() or filename
+
+
+LOOP_REASONS = {REASONS["rep"], "nghi cụm ảo giác đã biết"}
+
+
+def review_turn_ids(minutes):
+    """Unreviewed flagged turns worth a listen: those the minutes cite, plus decoding loops.
+
+    Without minutes every flagged turn qualifies, as before.
+    """
+    pending = [t for t in minutes["turns"] if t["flagged"] and not t.get("reviewed")]
+    cited = {
+        turn_id
+        for field in ("summary_points", "decisions", "action_items")
+        for item in minutes.get(field) or []
+        for turn_id in item.get("source_turn_ids", [])
+    }
+    if not cited:
+        return [t["turn_id"] for t in pending]
+    return [
+        t["turn_id"]
+        for t in pending
+        if t["turn_id"] in cited or LOOP_REASONS & set(t.get("flag_reasons", []))
+    ]
 
 
 class JobStore:
@@ -66,6 +95,9 @@ class JobStore:
             columns = {row[1] for row in db.execute("PRAGMA table_info(jobs)")}
             if "summary_template" not in columns:
                 db.execute("ALTER TABLE jobs ADD COLUMN summary_template TEXT DEFAULT 'project'")
+            for column in ("title TEXT", "finalized_revision INTEGER", "action_state TEXT"):
+                if column.split()[0] not in columns:
+                    db.execute(f"ALTER TABLE jobs ADD COLUMN {column}")
 
     @contextmanager
     def connect(self):
@@ -91,7 +123,12 @@ class JobStore:
             row = db.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         if row is None:
             raise KeyError("job not found")
-        return dict(row)
+        job = dict(row)
+        # Jobs created in Docker store /app/... paths; the audio still sits in the job folder.
+        source = Path(job["source"])
+        if not source.exists() and (self.root / job_id / source.name).exists():
+            job["source"] = str(self.root / job_id / source.name)
+        return job
 
     def list_jobs(self):
         with self.connect() as db:
@@ -110,6 +147,9 @@ class JobStore:
             "summary_json",
             "summary_error",
             "summary_template",
+            "title",
+            "finalized_revision",
+            "action_state",
         }
         if not fields or set(fields) - allowed:
             raise ValueError("invalid job update")
@@ -169,6 +209,12 @@ class JobStore:
         evidence = resolve_evidence(edited, edited["turns"])
         for field in ("summary_points", "decisions", "action_items"):
             edited[field] = evidence.get(field, [])
+        # Owner, deadline and done edits apply by position until the minutes are regenerated.
+        state = json.loads(job["action_state"] or "{}")
+        for index, item in enumerate(edited["action_items"]):
+            patch = state.get(str(index), {})
+            item.update({k: patch[k] for k in ("speaker", "deadline") if k in patch})
+            item["done"] = bool(patch.get("done", False))
         # Never present an old summary as current in exported artifacts.
         return {
             "original": original,
@@ -180,7 +226,45 @@ class JobStore:
             "summary_revision": job["summary_revision"],
             "summary_template": job["summary_template"] or "project",
             "summary_grounded": bool(edited.get("summary_points")),
+            "title": job["title"] or default_title(job["filename"]),
+            "finalized": job["finalized_revision"] == job["revision"],
+            "review_turn_ids": review_turn_ids(edited),
         }
+
+    def overview(self, job_id):
+        """Library facts for one finished meeting: what is left for the user to do."""
+        view = self.result(job_id)
+        edited = view["edited"]
+        speakers = {t["speaker_id"] for t in edited["turns"]}
+        actions = edited.get("action_items", [])
+        return {
+            "duration": edited["duration"],
+            "speakers": len(speakers),
+            "unnamed_speakers": len(speakers - set(view["speaker_names"])),
+            "decisions": len(edited.get("decisions", [])),
+            "actions": len(actions),
+            "actions_done": sum(item["done"] for item in actions),
+            "to_review": len(view["review_turn_ids"]),
+            "has_minutes": bool(edited.get("summary")),
+            "summary_stale": view["summary_stale"],
+        }
+
+    def update_action(self, job_id, index, **fields):
+        """Edit one action item's owner, deadline or done flag (kept until regeneration)."""
+        if set(fields) - {"speaker", "deadline", "done"}:
+            raise ValueError("invalid action item update")
+        if not 0 <= index < len(self.result(job_id)["edited"]["action_items"]):
+            raise KeyError("action item not found")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT action_state FROM jobs WHERE id=?", (job_id,)).fetchone()
+            state = json.loads(row[0] or "{}")
+            state.setdefault(str(index), {}).update(fields)
+            db.execute(
+                "UPDATE jobs SET action_state=? WHERE id=?",
+                (json.dumps(state, ensure_ascii=False), job_id),
+            )
+        return self.result(job_id)
 
     def answers(self, job_id, request_key=None):
         with self.connect() as db:
@@ -453,6 +537,7 @@ class JobWorker:
                     summary_json=json.dumps(result, ensure_ascii=False),
                     summary_revision=view["revision"],
                     summary_error=None,
+                    action_state=None,
                 )
             else:
                 self.processor(
@@ -469,6 +554,7 @@ class JobWorker:
                     job_id,
                     summary_revision=job["revision"],
                     summary_error=summary_status.get("error"),
+                    action_state=None,
                 )
             self.store.update(job_id, status="complete", stage="complete", progress=1)
         except Exception as exc:

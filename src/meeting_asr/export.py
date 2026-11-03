@@ -35,7 +35,7 @@ def evidence_text(item, turns):
 def export_markdown(view: dict) -> bytes:
     minutes = view["edited"]
     lines = [
-        f"# Biên bản họp — {minutes['audio_id']}",
+        f"# Biên bản họp — {view.get('title') or minutes['audio_id']}",
         "",
         f"Thời lượng: {timestamp(minutes['duration'], '.')} · {minutes['num_speakers']} người nói",
         "",
@@ -62,7 +62,8 @@ def export_markdown(view: dict) -> bytes:
             for item in minutes["action_items"]:
                 uncertain = " · cần xác nhận" if item["uncertain"] else ""
                 lines.append(
-                    f"- {item['speaker'] or 'Chưa rõ người phụ trách'}: {item['task']}"
+                    f"- [{'x' if item.get('done') else ' '}] "
+                    f"{item['speaker'] or 'Chưa rõ người phụ trách'}: {item['task']}"
                     f" · hạn: {item['deadline'] or 'chưa nêu'}{uncertain}"
                     + evidence_text(item, minutes["turns"])
                 )
