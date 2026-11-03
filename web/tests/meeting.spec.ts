@@ -1,207 +1,254 @@
-import { expect, test } from "@playwright/test";
+import { expect, Page, test } from "@playwright/test";
 import { installFixture } from "./fixtures";
 
-test("upload, correct text and speaker, rename, stale summary and export", async ({
+const noOverflow = (page: Page) =>
+  page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+const pause = (page: Page) =>
+  page.locator("audio").evaluate((a) => (a as HTMLAudioElement).pause());
+const currentTime = (page: Page) =>
+  page.locator("audio").evaluate((a) => (a as HTMLAudioElement).currentTime);
+
+test("upload opens the meeting with minutes first; edits, rename, finalize and export", async ({
   page,
 }) => {
   await installFixture(page, { empty: true });
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Ghi lại những điều quan trọng." }),
-  ).toBeVisible();
+  await expect(page.getByText("Kéo bản ghi cuộc họp vào đây")).toBeVisible();
+  await page.getByRole("button", { name: "Tải bản ghi" }).click();
   await page.getByLabel("Chọn bản ghi cuộc họp").setInputFiles({
     name: "meeting.wav",
     mimeType: "audio/wav",
     buffer: Buffer.from("fixture"),
   });
+  const minutes = page.getByRole("region", { name: "Biên bản" });
+  await expect(
+    minutes.getByText("Chốt bản thử nghiệm vào thứ Sáu."),
+  ).toBeVisible();
+  await expect(
+    minutes.getByText("Kiểm thử và gửi báo cáo kết quả"),
+  ).toBeVisible();
+
   const turn = page.locator('.turn[data-turn-id="1"]');
-  await turn
-    .getByRole("button", { name: "Sửa & xác nhận", exact: true })
-    .click();
+  await turn.getByRole("button", { name: "Sửa", exact: true }).click();
   await turn.getByLabel("Chỉnh sửa nội dung lượt nói").fill("Nội dung đã soát");
-  await turn.getByLabel("Người nói của lượt này").selectOption("A");
+  await turn.getByLabel("Người nói").selectOption("A");
   await turn.getByLabel("Chỉnh sửa nội dung lượt nói").press("Control+Enter");
-  await expect(turn.locator(".turn-text")).toHaveText("Nội dung đã soát");
-  await expect(turn.locator(".review-label")).toHaveText("✓ Đã soát");
-  await expect(turn.locator(".turn-meta strong")).toHaveText("An");
-  await turn.getByText("Xem bản ban đầu").click();
-  await expect(turn.locator(".original-turn")).toContainText(
+  await expect(turn.locator(".turn-body > p")).toHaveText("Nội dung đã soát");
+  await expect(turn.locator(".turn-who")).toContainText("An");
+  await expect(turn.getByText("đã nghe lại")).toBeVisible();
+  await turn.getByText("Bản ban đầu").click();
+  await expect(turn.locator(".original")).toContainText(
     "Tôi nhận phần kiểm thử",
   );
-  await page.getByRole("button", { name: "Người nói", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Quản lý người nói" });
-  await dialog.getByLabel("A", { exact: true }).fill("Anh An");
-  await dialog
-    .locator(".speaker-form")
-    .filter({ has: page.locator("#speaker-A") })
-    .getByRole("button", { name: "Lưu tên" })
-    .click();
-  await expect(dialog.getByLabel("A", { exact: true })).toHaveValue("Anh An");
-  await dialog.getByRole("button", { name: "Đóng", exact: true }).click();
-  await expect(turn.locator(".turn-meta strong")).toHaveText("Anh An");
-  await page.getByRole("tab", { name: "Tóm tắt & công việc" }).click();
-  await expect(page.getByText(/Nội dung đã thay đổi/)).toBeVisible();
-  await page.getByRole("tab", { name: "Timeline", exact: true }).click();
   await expect(
-    page.locator(".timeline-row").getByText("Anh An", { exact: true }),
+    minutes.getByText("Transcript đã sửa sau khi tạo biên bản."),
   ).toBeVisible();
-  await page.getByText("Xuất biên bản", { exact: true }).click();
-  const download = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Markdown ↗" }).click();
-  expect((await download).suggestedFilename()).toBe("meeting.md");
-  await page.reload();
-  await expect(page.locator('.turn[data-turn-id="1"] .turn-text')).toHaveText(
-    "Nội dung đã soát",
+
+  await page.getByRole("button", { name: "Họp tiến độ dự án" }).click();
+  await page.getByLabel("Tên cuộc họp").fill("Họp chốt bản thử nghiệm");
+  await page.getByLabel("Tên cuộc họp").press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Họp chốt bản thử nghiệm" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Chốt biên bản" }).click();
+  await expect(page.getByRole("button", { name: "Đã chốt" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
   );
+  await expect(
+    page.getByRole("status").filter({ hasText: "Đã chốt biên bản." }),
+  ).toBeVisible();
+
+  await page.getByLabel("Thêm thao tác").click();
+  const download = page.waitForEvent("download");
+  await page
+    .locator(".menu-panel")
+    .getByRole("link", { name: "Markdown" })
+    .click();
+  expect((await download).suggestedFilename()).toBe("meeting.md");
+
+  await page.getByRole("button", { name: "Thư viện" }).click();
+  const row = page.getByRole("button", { name: /Họp chốt bản thử nghiệm/ });
+  await expect(row).toContainText("Đã chốt");
+  await row.click();
+  await expect(
+    page.locator('.turn[data-turn-id="1"] .turn-body > p'),
+  ).toHaveText("Nội dung đã soát");
 });
 
-test("citations seek the original source and clear transcript filters", async ({
+test("evidence links jump to the source turn, clear search and play from it", async ({
   page,
 }) => {
   await installFixture(page);
   await page.goto("/?job=fixture");
   await page.getByLabel("Tìm trong transcript").fill("không có kết quả");
-  await page.getByRole("tab", { name: "Tóm tắt & công việc" }).click();
-  await expect(page.getByText("Nguồn cần soát").first()).toBeVisible();
+  await expect(page.getByText("Không tìm thấy lượt nói")).toBeVisible();
+  await expect(page.getByText("Nguồn chưa rõ").first()).toBeVisible();
   await page
     .getByRole("button", { name: "Nghe dẫn chứng 00:10 Bình" })
     .first()
     .click();
-  await expect(
-    page.getByRole("tab", { name: "Transcript", exact: true }),
-  ).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Tìm trong transcript")).toHaveValue("");
-  await expect(page.locator('.turn[data-turn-id="1"]')).toHaveClass(/selected/);
-  await expect
-    .poll(() =>
-      page
-        .locator("audio")
-        .evaluate((a) => (a as HTMLAudioElement).currentTime),
-    )
-    .toBeGreaterThanOrEqual(10);
-  await page.locator("audio").evaluate((a) => (a as HTMLAudioElement).pause());
+  await expect(page.locator('.turn[data-turn-id="1"]')).toHaveClass(/flash-/);
+  await expect.poll(() => currentTime(page)).toBeGreaterThanOrEqual(10);
+  await pause(page);
 });
 
-test("review queue, loop playback and keyboard ignore text inputs", async ({
+test("action items record done, owner and deadline", async ({ page }) => {
+  const { minutes } = await installFixture(page);
+  await page.goto("/?job=fixture");
+  const item = page.locator(".action").first();
+  await item.getByRole("button", { name: /Đánh dấu hoàn thành/ }).click();
+  await expect(item).toHaveClass(/done/);
+  await expect(
+    page.getByRole("heading", { name: /Việc cần làm/ }),
+  ).toContainText("1/1 xong");
+  await item.getByLabel("Người làm").selectOption("Cả nhóm");
+  await item.getByLabel("Hạn chót").fill("Thứ Sáu 17h");
+  await item.getByLabel("Hạn chót").press("Enter");
+  await expect.poll(() => minutes.action_items[0].deadline).toBe("Thứ Sáu 17h");
+  expect(minutes.action_items[0]).toMatchObject({
+    done: true,
+    speaker: "Cả nhóm",
+  });
+});
+
+test("review mode walks only the items behind the minutes", async ({
   page,
 }) => {
   await installFixture(page);
   await page.goto("/?job=fixture");
-  await page.getByRole("button", { name: "Đoạn cần soát tiếp" }).click();
-  await expect(page.locator('.turn[data-turn-id="1"]')).toHaveClass(/selected/);
-  await page.getByRole("button", { name: "Lặp đoạn", exact: true }).click();
+  await page.getByRole("button", { name: /2 mục/ }).click();
+  await expect(page).toHaveURL(/view=review/);
+  await expect(page.getByText("Mục 1 / 2")).toBeVisible();
+  await expect(page.getByText(/Ảnh hưởng tới/)).toContainText(
+    "Kiểm thử và gửi báo cáo kết quả",
+  );
+  await page.getByRole("button", { name: /Đúng rồi/ }).click();
+  await expect(page.getByText("Mục 2 / 2")).toBeVisible();
+  await page.keyboard.press("e");
+  await page
+    .getByLabel("Sửa lời nói")
+    .fill("Tôi là Bình, tôi sẽ gửi báo cáo kiểm thử.");
+  await page.getByLabel("Sửa lời nói").press("Control+Enter");
   await expect(
-    page.getByRole("button", { name: "Lặp đoạn", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("heading", { name: "Đã soát xong" }),
+  ).toBeVisible();
+  await expect(page.getByText("1 đúng · 1 đã sửa · 0 bỏ qua")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Cập nhật biên bản theo bản sửa" })
+    .click();
+  await expect(page).not.toHaveURL(/view=review/);
+  await expect(
+    page.getByRole("button", { name: /mục/ }).filter({ hasText: "Soát ngay" }),
+  ).toHaveCount(0);
+  await pause(page);
+});
+
+test("speaker step names voices, plays a sample and merges a split speaker", async ({
+  page,
+}) => {
+  await installFixture(page);
+  await page.goto("/?job=fixture");
+  await page.getByRole("button", { name: /^Người nói/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Ai đang nói?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Nghe thử giọng An" }).click();
+  await expect.poll(() => currentTime(page)).toBeGreaterThan(0);
+  await pause(page);
+  const nameA = page.locator("#speaker-A");
+  await nameA.fill("Anh An");
+  await nameA.press("Enter");
+  await expect(page.getByText("Đã lưu")).toBeVisible();
+  const card = page
+    .locator(".speaker-card")
+    .filter({ has: page.locator("#speaker-C") });
+  await card.getByText("Cùng một người với giọng khác?").click();
+  await card.getByLabel("Gộp vào").selectOption("B");
+  await card.getByRole("button", { name: "Gộp 1 lượt" }).click();
+  await expect(page.locator("#speaker-C")).toHaveCount(0);
+  await page.getByRole("button", { name: /^Xong/ }).click();
+  await expect(page.locator('.turn[data-turn-id="0"] .turn-who')).toContainText(
+    "Anh An",
+  );
+  await expect(page.locator('.turn[data-turn-id="3"] .turn-who')).toContainText(
+    "Bình",
+  );
+  await page.getByLabel("Thêm thao tác").click();
+  await page.getByRole("button", { name: "Lịch sử chỉnh sửa" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Lịch sử chỉnh sửa" }),
+  ).toContainText("Người nói 03 → Bình · 1 lượt");
+});
+
+test("loop replays the turn and shortcuts ignore text inputs", async ({
+  page,
+}) => {
+  await installFixture(page);
+  await page.goto("/?job=fixture");
+  await page.getByRole("button", { name: "Nghe lượt 00:10" }).click();
+  await page.getByRole("button", { name: "Lặp đoạn" }).click();
+  await expect(page.getByRole("button", { name: "Lặp đoạn" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.locator("audio").evaluate(async (a) => {
     (a as HTMLAudioElement).currentTime = 12.99;
     await (a as HTMLAudioElement).play();
   });
-  await expect
-    .poll(() =>
-      page
-        .locator("audio")
-        .evaluate((a) => (a as HTMLAudioElement).currentTime),
-    )
-    .toBeLessThan(12);
-  await page.locator("audio").evaluate((a) => (a as HTMLAudioElement).pause());
-  await page.getByLabel("Tìm trong transcript").fill("jj");
-  await expect(page.getByLabel("Tìm trong transcript")).toHaveValue("jj");
-  await page.getByLabel("Tìm trong transcript").fill("");
-  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
-  await page.keyboard.press("n");
-  await expect(page.locator('.turn[data-turn-id="3"]')).toHaveClass(/selected/);
-  await page.locator("audio").evaluate((a) => (a as HTMLAudioElement).pause());
-  await page.getByRole("button", { name: /^Cần soát/ }).click();
-  await expect(page.locator(".turn")).toHaveCount(2);
-  await page
-    .locator('.turn[data-turn-id="1"]')
-    .getByRole("button", { name: "Đúng, đánh dấu đã soát" })
-    .click();
-  await expect(page.locator(".turn")).toHaveCount(1);
-  await expect(
-    page.getByText("1/5 lượt đã soát", { exact: true }),
-  ).toBeVisible();
+  await expect.poll(() => currentTime(page)).toBeLessThan(12);
+  await pause(page);
+  await page.getByLabel("Tìm trong transcript").fill("jj ");
+  await expect(page.getByLabel("Tìm trong transcript")).toHaveValue("jj ");
+  await expect(page.getByRole("button", { name: "Phát audio" })).toBeVisible();
 });
 
-test("merge duplicate speaker groups and inspect edit history", async ({
-  page,
-}) => {
-  await installFixture(page);
-  await page.goto("/?job=fixture");
-  await page.getByRole("button", { name: "Người nói", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Quản lý người nói" });
-  await dialog.getByLabel("Nhóm cần gộp").selectOption("C");
-  await dialog.getByLabel("Gộp vào", { exact: true }).selectOption("B");
-  await dialog.getByRole("button", { name: "Gộp 1 lượt nói" }).click();
-  await expect(dialog).not.toBeVisible();
-  await expect(
-    page.locator('.turn[data-turn-id="3"] .turn-meta strong'),
-  ).toHaveText("Bình");
-  await expect(page.locator(".meeting-heading")).toContainText("2 người nói");
-  await page.getByRole("button", { name: "Lịch sử", exact: true }).click();
-  await expect(
-    page.getByRole("dialog", { name: "Lịch sử chỉnh sửa" }),
-  ).toContainText("C → B · 1 lượt");
-});
-
-test("minutes templates regenerate and reveal revision conflicts", async ({
+test("templates regenerate the minutes and revision conflicts are reported", async ({
   page,
 }) => {
   const { view, job } = await installFixture(page);
   await page.goto("/?job=fixture");
-  await page.getByRole("tab", { name: "Tóm tắt & công việc" }).click();
-  await page.getByLabel("Mẫu biên bản").selectOption("standup");
-  await page.getByRole("button", { name: "Tạo lại", exact: true }).click();
+  await page.getByLabel("Thêm thao tác").click();
+  await page.getByLabel("Mẫu").selectOption("standup");
+  await page.getByRole("button", { name: "Tạo lại biên bản" }).click();
   await expect.poll(() => view.summary_template).toBe("standup");
-  await page.getByRole("tab", { name: "Transcript", exact: true }).click();
   const turn = page.locator('.turn[data-turn-id="1"]');
-  await turn
-    .getByRole("button", { name: "Sửa & xác nhận", exact: true })
-    .click();
+  await turn.getByRole("button", { name: "Sửa", exact: true }).click();
   await turn.getByLabel("Chỉnh sửa nội dung lượt nói").fill("Không ghi đè");
   view.revision = 20;
   job.revision = 20;
-  await turn.getByRole("button", { name: "Lưu & đánh dấu đã soát" }).click();
-  await expect(page.locator(".alert[role=alert]")).toContainText(
+  await turn.getByRole("button", { name: "Lưu", exact: true }).click();
+  await expect(page.locator(".banner[role=alert]")).toContainText(
     "Nội dung đã thay đổi ở phiên khác",
   );
-  await expect(turn.locator(".turn-text")).not.toHaveText("Không ghi đè");
+  await expect(turn.locator(".turn-body > p")).not.toHaveText("Không ghi đè");
 });
 
-test("mobile library transcript minutes and dialogs have no horizontal overflow", async ({
-  page,
-}) => {
+test("phone layouts have no horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Thư viện cuộc họp", exact: true }),
+    page.getByRole("heading", { name: "Cuộc họp", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: /Họp tiến độ dự án.wav/ })
-    .last()
-    .click();
+  expect(await noOverflow(page)).toBe(true);
+  await page.getByRole("button", { name: /Họp tiến độ dự án/ }).click();
   await expect(page.locator(".turn")).toHaveCount(5);
-  for (const tab of ["Transcript", "Tóm tắt & công việc", "Timeline"]) {
-    await page.getByRole("tab", { name: tab, exact: true }).click();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBeTruthy();
-  }
-  await page.getByRole("button", { name: "Người nói", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBeTruthy();
-  await page.screenshot({
-    path: "test-results/mobile-speakers.png",
-    fullPage: true,
-  });
+  expect(await noOverflow(page)).toBe(true);
+  await page.getByRole("button", { name: "Hỏi cuộc họp" }).click();
+  expect(await noOverflow(page)).toBe(true);
+  await page.getByLabel("Đóng hỏi đáp").click();
+  await page.getByRole("button", { name: /^Người nói/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "Ai đang nói?" }),
+  ).toBeVisible();
+  expect(await noOverflow(page)).toBe(true);
+  await page.goto("/?job=fixture&view=review");
+  await expect(page.getByText("Mục 1 / 2")).toBeVisible();
+  expect(await noOverflow(page)).toBe(true);
+  await pause(page);
 });
 
 test("unsupported upload, processing and failed state allow retry", async ({
@@ -212,12 +259,13 @@ test("unsupported upload, processing and failed state allow retry", async ({
     status: "running",
   });
   await page.goto("/");
+  await page.getByRole("button", { name: "Tải bản ghi" }).click();
   await page.getByLabel("Chọn bản ghi cuộc họp").setInputFiles({
     name: "notes.txt",
     mimeType: "text/plain",
     buffer: Buffer.from("x"),
   });
-  await expect(page.locator(".alert[role=alert]")).toContainText(
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
     "WAV, MP3 hoặc M4A",
   );
   await page.getByLabel("Chọn bản ghi cuộc họp").setInputFiles({
@@ -226,7 +274,7 @@ test("unsupported upload, processing and failed state allow retry", async ({
     buffer: Buffer.from("x"),
   });
   await expect(
-    page.getByRole("heading", { name: "Phiên âm nội dung", exact: true }),
+    page.getByRole("heading", { name: "Đang chép lời" }),
   ).toBeVisible();
   job.status = "failed";
   job.stage = "failed";
@@ -236,6 +284,6 @@ test("unsupported upload, processing and failed state allow retry", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Thử lại", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Phiên âm nội dung", exact: true }),
+    page.getByRole("heading", { name: "Đang chép lời" }),
   ).toBeVisible();
 });

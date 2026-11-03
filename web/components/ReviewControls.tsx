@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EditEvent, request, ResultView, speakerId, Turn } from "@/lib/api";
+import {
+  EditEvent,
+  jsonBody,
+  request,
+  ResultView,
+  speakerId,
+  speakerOrder,
+  Turn,
+} from "@/lib/api";
 import { Icon } from "./Icon";
 
 type Props = {
@@ -10,6 +18,8 @@ type Props = {
   onView: (view: ResultView) => void;
   onError: (error: string) => void;
 };
+
+/** Inline correction for one turn; actions appear on hover or keyboard focus. */
 export function TurnEditor({
   jobId,
   view,
@@ -22,7 +32,7 @@ export function TurnEditor({
   const [draftRevision, setDraftRevision] = useState(view.revision);
   const [speaker, setSpeaker] = useState(speakerId(turn));
   const [saving, setSaving] = useState(false);
-  const speakers = [...new Set(view.original.turns.map((t) => t.speaker))];
+  const speakers = speakerOrder(view.original.turns);
   useEffect(() => {
     if (!editing) {
       setDraft(turn.text);
@@ -34,16 +44,15 @@ export function TurnEditor({
     setSaving(true);
     try {
       onView(
-        await request<ResultView>(`/api/jobs/${jobId}/turns/${turn.turn_id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        await request<ResultView>(
+          `/api/jobs/${jobId}/turns/${turn.turn_id}`,
+          jsonBody({
             text: editing ? draft : turn.text,
             speaker_id: editing ? speaker : speakerId(turn),
             reviewed,
             expected_revision: editing ? draftRevision : view.revision,
           }),
-        }),
+        ),
       );
       setEditing(false);
     } catch (error) {
@@ -54,95 +63,95 @@ export function TurnEditor({
       setSaving(false);
     }
   }
-  return (
-    <div className="edit-controls">
-      {editing ? (
-        <div
-          className="turn-editor"
-          onKeyDown={(event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-              event.preventDefault();
-              void save();
-            }
-          }}
-        >
-          <label htmlFor={`edit-${turn.turn_id}`}>
-            Chỉnh sửa nội dung lượt nói
-          </label>
-          <textarea
-            id={`edit-${turn.turn_id}`}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={3}
-            maxLength={50000}
-            autoFocus
-          />
-          <label htmlFor={`assign-${turn.turn_id}`}>
-            Người nói của lượt này
-          </label>
-          <select
-            id={`assign-${turn.turn_id}`}
-            value={speaker}
-            onChange={(e) => setSpeaker(e.target.value)}
-          >
-            {speakers.map((id) => (
-              <option key={id} value={id}>
-                {view.speaker_names[id] || id}
-              </option>
-            ))}
-          </select>
-          <div className="editor-actions">
-            <button
-              className="button primary small"
-              disabled={saving}
-              onClick={() => void save()}
+  const changed =
+    turn.original_text !== turn.text ||
+    speakerId(turn) !== turn.original_speaker;
+  if (editing)
+    return (
+      <div
+        className="turn-editor"
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+            event.preventDefault();
+            void save();
+          }
+          if (event.key === "Escape") setEditing(false);
+        }}
+      >
+        <label htmlFor={`edit-${turn.turn_id}`} className="sr-only">
+          Chỉnh sửa nội dung lượt nói
+        </label>
+        <textarea
+          id={`edit-${turn.turn_id}`}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          rows={3}
+          maxLength={50000}
+          autoFocus
+        />
+        <div className="editor-row">
+          <label>
+            Người nói
+            <select
+              value={speaker}
+              onChange={(e) => setSpeaker(e.target.value)}
             >
-              {saving ? "Đang lưu…" : "Lưu & đánh dấu đã soát"}
-            </button>
-            <button
-              className="button quiet small"
-              disabled={saving}
-              onClick={() => setEditing(false)}
-            >
-              Hủy
-            </button>
-            <small className="subtle">Ctrl / ⌘ + Enter để lưu</small>
-          </div>
-        </div>
-      ) : (
-        <>
+              {speakers.map((id) => (
+                <option key={id} value={id}>
+                  {view.speaker_names[id] || id}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
-            className="text-button"
-            onClick={() => {
-              setDraftRevision(view.revision);
-              setEditing(true);
-            }}
-          >
-            <Icon name="edit" width="14" height="14" />
-            {turn.reviewed ? "Sửa lại" : "Sửa & xác nhận"}
-          </button>
-          <button
-            className="text-button"
+            className="btn primary small"
             disabled={saving}
-            onClick={() => void save(!turn.reviewed)}
+            onClick={() => void save()}
           >
-            <Icon name="check" width="14" height="14" />
-            {turn.reviewed ? "Bỏ đánh dấu đã soát" : "Đúng, đánh dấu đã soát"}
+            {saving ? "Đang lưu…" : "Lưu"}
           </button>
-          {(turn.original_text !== turn.text ||
-            speakerId(turn) !== turn.original_speaker) && (
-            <details className="original-turn">
-              <summary>Xem bản ban đầu</summary>
-              <p>
-                {turn.original_speaker}: {turn.original_text}
-              </p>
-            </details>
-          )}
-        </>
+          <button
+            className="btn small"
+            disabled={saving}
+            onClick={() => setEditing(false)}
+          >
+            Hủy
+          </button>
+          <small className="muted">Ctrl / ⌘ + Enter</small>
+        </div>
+      </div>
+    );
+  return (
+    <div className="turn-actions">
+      <button
+        className="link"
+        onClick={() => {
+          setDraftRevision(view.revision);
+          setEditing(true);
+        }}
+      >
+        <Icon name="edit" width="13" /> Sửa
+      </button>
+      <button
+        className="link"
+        disabled={saving}
+        onClick={() => void save(!turn.reviewed)}
+      >
+        <Icon name="check" width="13" />
+        {turn.reviewed ? "Bỏ đánh dấu đã nghe" : "Đúng, đã nghe lại"}
+      </button>
+      {changed && (
+        <details className="original">
+          <summary>Bản ban đầu</summary>
+          <p>
+            {turn.original_speaker}: {turn.original_text}
+          </p>
+        </details>
       )}
     </div>
   );
 }
+
 export function Modal({
   title,
   onClose,
@@ -175,11 +184,8 @@ export function Modal({
       }}
       aria-label={title}
     >
-      <div className="modal-heading">
-        <div>
-          <span className="eyebrow">MEETING NOTES</span>
-          <h2>{title}</h2>
-        </div>
+      <div className="modal-head">
+        <h2>{title}</h2>
         <button className="icon-button" aria-label="Đóng" onClick={onClose}>
           <Icon name="close" />
         </button>
@@ -188,171 +194,7 @@ export function Modal({
     </dialog>
   );
 }
-function SpeakerName({
-  speaker,
-  turn,
-  jobId,
-  view,
-  onView,
-  onError,
-}: Props & { speaker: string; turn: Turn }) {
-  const savedName = view.speaker_names[speaker] || speaker;
-  const [name, setName] = useState(savedName);
-  const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    setName(savedName);
-  }, [savedName]);
-  async function save(event: React.FormEvent) {
-    event.preventDefault();
-    if (!name.trim() || saving) return;
-    setSaving(true);
-    try {
-      onView(
-        await request<ResultView>(`/api/jobs/${jobId}/turns/${turn.turn_id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            speaker_name: name.trim(),
-            reviewed: turn.reviewed,
-            expected_revision: view.revision,
-          }),
-        }),
-      );
-    } catch (error) {
-      onError(error instanceof Error ? error.message : "Chưa đổi được tên.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <form className="speaker-form" onSubmit={save}>
-      <label htmlFor={`speaker-${speaker}`}>{speaker}</label>
-      <input
-        id={`speaker-${speaker}`}
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        maxLength={100}
-        required
-      />
-      <button
-        className="button secondary small"
-        disabled={saving || name.trim() === savedName}
-        type="submit"
-      >
-        {saving ? "Đang lưu…" : "Lưu tên"}
-      </button>
-    </form>
-  );
-}
-export function SpeakersDialog(props: Props & { onClose: () => void }) {
-  const speakers = [...new Set(props.view.edited.turns.map(speakerId))];
-  const [source, setSource] = useState(speakers[0] || "");
-  const [target, setTarget] = useState(speakers[1] || "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const count = props.view.edited.turns.filter(
-    (t) => speakerId(t) === source,
-  ).length;
-  async function merge() {
-    if (saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      props.onView(
-        await request<ResultView>(`/api/jobs/${props.jobId}/speakers/merge`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source_speaker: source,
-            target_speaker: target,
-            expected_revision: props.view.revision,
-          }),
-        }),
-      );
-      props.onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Chưa gộp được người nói.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <Modal title="Quản lý người nói" onClose={props.onClose}>
-      <p className="dialog-intro">
-        Đặt tên để dễ theo dõi. Nếu một người bị chia thành nhiều nhóm, bạn có
-        thể gộp các lượt nói của họ.
-      </p>
-      <h3>Đặt tên người nói</h3>
-      <div className="speaker-list">
-        {speakers.map((id) => (
-          <SpeakerName
-            key={id}
-            {...props}
-            onError={setError}
-            speaker={id}
-            turn={props.view.edited.turns.find((t) => speakerId(t) === id)!}
-          />
-        ))}
-      </div>
-      <section className="merge-section">
-        <h3>Gộp nhóm người nói</h3>
-        {speakers.length < 2 ? (
-          <p className="subtle">Cuộc họp hiện có một nhóm người nói.</p>
-        ) : (
-          <>
-            <div className="merge-selects">
-              <label>
-                Nhóm cần gộp
-                <select
-                  aria-label="Nhóm cần gộp"
-                  value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                >
-                  {speakers.map((id) => (
-                    <option key={id} value={id}>
-                      {props.view.speaker_names[id] || id}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Icon name="next" />
-              <label>
-                Gộp vào
-                <select
-                  aria-label="Gộp vào"
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                >
-                  {speakers.map((id) => (
-                    <option key={id} value={id}>
-                      {props.view.speaker_names[id] || id}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <p className="hint">
-              {count} lượt sẽ chuyển nhóm. Nội dung, thời gian và bản model gốc
-              vẫn được giữ; biên bản cần tạo lại.
-            </p>
-            <button
-              className="button primary"
-              disabled={source === target || saving}
-              onClick={() => void merge()}
-            >
-              {saving ? "Đang gộp…" : `Gộp ${count} lượt nói`}
-            </button>
-          </>
-        )}
-        {error && (
-          <p className="notice warning" role="alert">
-            {error}
-          </p>
-        )}
-      </section>
-    </Modal>
-  );
-}
+
 export function HistoryDialog({
   jobId,
   onClose,
@@ -373,52 +215,52 @@ export function HistoryDialog({
       });
     return () => c.abort();
   }, [jobId, view.revision]);
+  const name = (id?: string) => (id ? view.speaker_names[id] || id : "");
   return (
     <Modal title="Lịch sử chỉnh sửa" onClose={onClose}>
-      <p className="dialog-intro">
-        Bản model gốc được giữ riêng. Hiển thị tối đa 100 thay đổi gần nhất.
+      <p className="muted">
+        Bản gốc của mô hình luôn được giữ. Hiển thị 100 thay đổi gần nhất.
       </p>
       {error && (
-        <p role="alert" className="notice warning">
+        <p role="alert" className="callout warn">
           {error}
         </p>
       )}
-      {events === null && !error && <p className="subtle">Đang tải lịch sử…</p>}
-      {events?.length === 0 && (
-        <p className="panel-empty">Chưa có chỉnh sửa.</p>
-      )}
-      <ol className="history-list">
+      {events === null && !error && <p className="muted">Đang tải lịch sử…</p>}
+      {events?.length === 0 && <p className="empty">Chưa có chỉnh sửa.</p>}
+      <ol className="history">
         {events?.map((event) => (
           <li key={event.id}>
-            <div>
+            <div className="history-head">
               <strong>
                 {event.kind === "speaker_merge"
-                  ? "Gộp nhóm người nói"
-                  : "Chỉnh sửa lượt nói"}
+                  ? "Gộp người nói"
+                  : "Sửa lượt nói"}
               </strong>
-              <small>
+              <small className="muted">
                 Phiên bản {event.revision} ·{" "}
                 {new Date(event.created * 1000).toLocaleString("vi-VN")}
               </small>
             </div>
             {event.kind === "speaker_merge" ? (
               <p>
-                {event.changes.source_speaker} → {event.changes.target_speaker}{" "}
-                · {event.changes.turn_ids?.length} lượt
+                {name(event.changes.source_speaker)} →{" "}
+                {name(event.changes.target_speaker)} ·{" "}
+                {event.changes.turn_ids?.length} lượt
               </p>
             ) : (
               <>
-                <p>
-                  {event.changes.before?.speaker_id} →{" "}
-                  {event.changes.after?.speaker_id}
-                  {event.changes.after?.reviewed
-                    ? " · đã soát"
-                    : " · chưa soát"}
-                </p>
+                {event.changes.before?.speaker_id !==
+                  event.changes.after?.speaker_id && (
+                  <p>
+                    {name(event.changes.before?.speaker_id)} →{" "}
+                    {name(event.changes.after?.speaker_id)}
+                  </p>
+                )}
                 {event.changes.before?.text !== event.changes.after?.text && (
-                  <div className="history-diff">
+                  <div className="diff">
                     <del>{event.changes.before?.text}</del>
-                    <p>{event.changes.after?.text}</p>
+                    <ins>{event.changes.after?.text}</ins>
                   </div>
                 )}
                 {event.changes.speaker_name && (
@@ -427,11 +269,119 @@ export function HistoryDialog({
                     {event.changes.speaker_name.after}
                   </p>
                 )}
+                {event.changes.after?.reviewed &&
+                  !event.changes.before?.reviewed && (
+                    <p className="muted">Đánh dấu đã nghe lại</p>
+                  )}
               </>
             )}
           </li>
         ))}
       </ol>
+    </Modal>
+  );
+}
+
+export function useDropUpload(onFile: (file: File) => void) {
+  const [dragging, setDragging] = useState(false);
+  return {
+    dragging,
+    handlers: {
+      onDragOver: (e: React.DragEvent) => {
+        e.preventDefault();
+        setDragging(true);
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node))
+          setDragging(false);
+      },
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) onFile(file);
+      },
+    },
+  };
+}
+
+export function UploadDialog({
+  onClose,
+  onUploaded,
+  initialFile,
+}: {
+  onClose: () => void;
+  onUploaded: (id: string) => void;
+  initialFile?: File;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const started = useRef(false);
+  async function upload(file?: File) {
+    if (!file || uploading) return;
+    if (!/\.(wav|mp3|m4a)$/i.test(file.name))
+      return setError("Hãy chọn file WAV, MP3 hoặc M4A.");
+    if (file.size > 200 * 1024 * 1024)
+      return setError("File cần nhỏ hơn 200 MB.");
+    setUploading(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const result = await request<{ job_id: string }>("/api/jobs", {
+        method: "POST",
+        body: form,
+      });
+      onUploaded(result.job_id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không tải file lên được.");
+    } finally {
+      setUploading(false);
+      if (input.current) input.current.value = "";
+    }
+  }
+  useEffect(() => {
+    if (initialFile && !started.current) {
+      started.current = true;
+      void upload(initialFile);
+    }
+    // Upload a dropped file once, on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const drop = useDropUpload((file) => void upload(file));
+  return (
+    <Modal title="Tải bản ghi cuộc họp" onClose={onClose}>
+      <input
+        ref={input}
+        type="file"
+        accept=".wav,.mp3,.m4a"
+        aria-label="Chọn bản ghi cuộc họp"
+        className="sr-only"
+        onChange={(e) => void upload(e.target.files?.[0])}
+      />
+      <div
+        className={`dropzone ${drop.dragging ? "dragging" : ""}`}
+        {...drop.handlers}
+      >
+        <Icon name="upload" width="28" height="28" />
+        <p>
+          <strong>Kéo bản ghi vào đây</strong> hoặc chọn từ máy
+        </p>
+        <button
+          className="btn primary"
+          disabled={uploading}
+          onClick={() => input.current?.click()}
+        >
+          {uploading ? "Đang tải lên…" : "Chọn bản ghi"}
+        </button>
+        <small className="muted">WAV, MP3, M4A · tối đa 200 MB</small>
+      </div>
+      {error && (
+        <p role="alert" className="callout warn">
+          {error}
+        </p>
+      )}
     </Modal>
   );
 }

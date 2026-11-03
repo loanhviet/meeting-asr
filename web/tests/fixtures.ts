@@ -40,6 +40,8 @@ export async function installFixture(
     created: 1790899200,
     revision: 0,
     summary_error: null,
+    title: "Họp tiến độ dự án",
+    finalized: false,
   };
   const specs = [
     ["An", "A", "Chúng ta chốt bản thử nghiệm vào thứ Sáu.", 0, 8, false],
@@ -141,7 +143,40 @@ export async function installFixture(
     summary_template: "project",
     summary_grounded: true,
     speaker_names: { A: "An", B: "Bình", C: "Người nói 03" },
+    title: job.title,
+    finalized: false,
+    review_turn_ids: [],
   };
+  // Mirrors the API: flagged, unreviewed turns cited by the minutes.
+  const refresh = () => {
+    const cited = new Set(
+      [
+        ...(minutes.decisions || []),
+        ...minutes.action_items,
+        ...(minutes.summary_points || []),
+      ].flatMap((item) => item.source_turn_ids),
+    );
+    view.review_turn_ids = minutes.turns
+      .filter((t) => t.flagged && !t.reviewed && cited.has(t.turn_id))
+      .map((t) => t.turn_id);
+    view.title = job.title;
+    view.finalized = job.finalized;
+    const ids = new Set(minutes.turns.map((t) => t.speaker_id));
+    job.overview = {
+      duration: minutes.duration,
+      speakers: ids.size,
+      unnamed_speakers: [...ids].filter((id) => !view.speaker_names[id!])
+        .length,
+      decisions: minutes.decisions?.length || 0,
+      actions: minutes.action_items.length,
+      actions_done: minutes.action_items.filter((a) => a.done).length,
+      to_review: view.review_turn_ids.length,
+      has_minutes: !!minutes.summary,
+      summary_stale: view.summary_stale,
+    };
+    return view;
+  };
+  refresh();
   const events: EditEvent[] = [];
   const answers: MeetingAnswer[] = [];
   let uploaded = !options.empty;
@@ -154,8 +189,24 @@ export async function installFixture(
       uploaded = true;
       return route.fulfill({ status: 202, json: { job_id: job.id } });
     }
-    if (path === "/api/jobs")
+    if (path === "/api/jobs") {
+      refresh();
       return route.fulfill({ json: uploaded ? [job] : [] });
+    }
+    if (path === "/api/jobs/fixture" && req.method() === "PATCH") {
+      const update = req.postDataJSON();
+      if (update.title) job.title = update.title;
+      if (update.finalized !== undefined) job.finalized = update.finalized;
+      refresh();
+      return route.fulfill({ json: job });
+    }
+    if (path.includes("/actions/")) {
+      const item = minutes.action_items[Number(path.split("/").at(-1))];
+      if (!item)
+        return route.fulfill({ status: 404, json: { detail: "not found" } });
+      Object.assign(item, req.postDataJSON());
+      return route.fulfill({ json: refresh() });
+    }
     if (path.endsWith("/audio")) {
       const audio = audioFixture();
       const range = /^bytes=(\d+)-(\d*)$/.exec(req.headers()["range"] || "");
@@ -186,7 +237,7 @@ export async function installFixture(
           status: 409,
           json: { detail: "Result is not ready" },
         });
-      return route.fulfill({ json: view });
+      return route.fulfill({ json: refresh() });
     }
     if (path.endsWith("/history"))
       return route.fulfill({ json: [...events].reverse() });
@@ -292,7 +343,8 @@ export async function installFixture(
       minutes.num_speakers = new Set(
         minutes.turns.map((t) => t.speaker_id),
       ).size;
-      return route.fulfill({ json: view });
+      job.finalized = false;
+      return route.fulfill({ json: refresh() });
     }
     if (path.endsWith("/speakers/merge")) {
       const update = req.postDataJSON();

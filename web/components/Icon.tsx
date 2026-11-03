@@ -25,6 +25,10 @@ const paths = {
   alert: "m12 3 10 18H2zM12 9v4m0 3v1",
   edit: "m16 3 5 5-12 12H4v-5zM13 6l5 5",
   chat: "M21 11a8 8 0 0 1-8 8H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4zM7 8h10M7 12h7",
+  sun: "M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m0-12.72 1.42 1.42m9.88 9.88 1.42 1.42M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+  moon: "M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  calendar: "M4 6h16v14H4zM4 10h16M8 3v4m8-4v4",
 } as const;
 export type IconName = keyof typeof paths;
 export function Icon({
