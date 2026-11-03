@@ -42,6 +42,9 @@ export async function installFixture(
     summary_error: null,
     title: "Họp tiến độ dự án",
     finalized: false,
+    participants: [],
+    duration: 120,
+    eta_sec: options.status === "running" ? 150 : null,
   };
   const specs = [
     ["An", "A", "Chúng ta chốt bản thử nghiệm vào thứ Sáu.", 0, 8, false],
@@ -146,6 +149,7 @@ export async function installFixture(
     title: job.title,
     finalized: false,
     review_turn_ids: [],
+    participants: [],
   };
   // Mirrors the API: flagged, unreviewed turns cited by the minutes.
   const refresh = () => {
@@ -197,6 +201,8 @@ export async function installFixture(
       const update = req.postDataJSON();
       if (update.title) job.title = update.title;
       if (update.finalized !== undefined) job.finalized = update.finalized;
+      if (update.participants)
+        job.participants = view.participants = update.participants;
       refresh();
       return route.fulfill({ json: job });
     }

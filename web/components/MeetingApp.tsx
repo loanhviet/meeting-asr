@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { API, Job, request, ResultView } from "@/lib/api";
+import { API, Job, notifyDone, request, ResultView } from "@/lib/api";
 import { Icon } from "./Icon";
 import { Library } from "./Library";
 import { Workspace } from "./Workspace";
@@ -18,7 +18,11 @@ export type Playback = {
   play: (from: number, until?: number) => void;
   toggle: () => void;
 };
-export type Toast = { text: string; links?: { label: string; href: string }[] };
+export type Toast = {
+  text: string;
+  links?: { label: string; href: string }[];
+  actions?: { label: string; onClick: () => void }[];
+};
 
 function readUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -111,6 +115,11 @@ export default function MeetingApp() {
           signal: controller.signal,
         });
         if (!active) return;
+        if (
+          (lastStatus === "queued" || lastStatus === "running") &&
+          (current.status === "complete" || current.status === "failed")
+        )
+          notifyDone(current.title, current.status === "complete");
         setJob(current);
         if (
           (current.status === "complete" || current.status === "failed") &&
@@ -236,6 +245,7 @@ export default function MeetingApp() {
           onOpen={(id) => navigate(id)}
           onUpload={() => setUploadOpen(true)}
           onError={setError}
+          onToast={showToast}
           themeButton={themeButton}
         />
       ) : (
@@ -319,6 +329,11 @@ export default function MeetingApp() {
               <a key={link.href} href={link.href} download>
                 {link.label}
               </a>
+            ))}
+            {toast.actions?.map((action) => (
+              <button key={action.label} onClick={action.onClick}>
+                {action.label}
+              </button>
             ))}
           </>
         )}

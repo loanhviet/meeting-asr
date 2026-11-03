@@ -13,6 +13,10 @@ export type Job = {
   title: string;
   finalized: boolean;
   overview?: Overview | null;
+  participants?: string[];
+  duration?: number | null;
+  /** Seconds left, estimated from this machine's measured speed; null when unknown. */
+  eta_sec?: number | null;
 };
 export type Overview = {
   duration: number;
@@ -83,6 +87,7 @@ export type ResultView = {
   title: string;
   finalized: boolean;
   review_turn_ids: string[];
+  participants?: string[];
 };
 export type EditEvent = {
   id: number;
@@ -207,4 +212,37 @@ export function claimsFor(minutes: Minutes, turnId: string) {
       ids: p.source_turn_ids,
     })),
   ].filter((c) => c.ids?.includes(turnId));
+}
+
+export function eta(seconds?: number | null) {
+  if (seconds === null || seconds === undefined) return null;
+  if (seconds < 45) return "sắp xong";
+  return `còn khoảng ${Math.ceil(seconds / 60)} phút`;
+}
+/** Plain-text action list to paste into chat or email. */
+export function actionListText(view: ResultView) {
+  const items = view.edited.action_items;
+  if (!items.length) return `${view.title}: không có việc cần làm.`;
+  return [
+    `Việc cần làm — ${view.title}`,
+    ...items.map(
+      (a) =>
+        `${a.done ? "☑" : "☐"} ${a.task}` +
+        ` — ${a.speaker || "chưa rõ người làm"}` +
+        (a.deadline ? ` — hạn: ${a.deadline}` : ""),
+    ),
+  ].join("\n");
+}
+/** Ask once, from a user action, so the browser can tell when a long job finishes. */
+export function askNotifyPermission() {
+  if ("Notification" in window && Notification.permission === "default")
+    void Notification.requestPermission();
+}
+export function notifyDone(title: string, ok: boolean) {
+  if (!("Notification" in window) || Notification.permission !== "granted")
+    return;
+  if (!document.hidden) return;
+  new Notification(ok ? "Đã xử lý xong" : "Xử lý chưa thành công", {
+    body: title,
+  });
 }

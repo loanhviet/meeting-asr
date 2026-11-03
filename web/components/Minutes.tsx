@@ -161,7 +161,10 @@ export function Minutes({
   const decisions = minutes.decisions || [];
   const actions = minutes.action_items;
   const toReview = view.review_turn_ids.length;
-  const owners = order.map((id) => view.speaker_names[id]).filter(Boolean);
+  const owners = [
+    ...(view.participants || []),
+    ...order.map((id) => view.speaker_names[id]).filter(Boolean),
+  ];
   const done = actions.filter((a) => a.done).length;
 
   return (
