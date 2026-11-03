@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
@@ -13,7 +15,14 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from meeting_asr.ask import AskMeeting, transcript_hash
-from meeting_asr.jobs import JobStore, JobWorker, RevisionConflict, default_title, new_job_id
+from meeting_asr.jobs import (
+    JobStore,
+    JobWorker,
+    RevisionConflict,
+    default_title,
+    new_job_id,
+    participants,
+)
 from meeting_asr.pipeline import project_path, run_pipeline
 from meeting_asr.settings import config_hash, load_config
 
@@ -41,6 +50,9 @@ class SummaryRequest(BaseModel):
 class JobUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     finalized: bool | None = None
+    participants: list[Annotated[str, Field(min_length=1, max_length=60)]] | None = Field(
+        default=None, max_length=30
+    )
 
 
 class ActionUpdate(BaseModel):
@@ -52,6 +64,30 @@ class ActionUpdate(BaseModel):
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     expected_revision: int = Field(ge=0)
+
+
+def audio_duration(path):
+    """Best effort: an unreadable file still uploads; the ETA is just unknown."""
+    try:
+        out = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        return float(out.stdout.strip())
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
 
 
 def public_job(job):
@@ -71,6 +107,8 @@ def public_job(job):
     } | {
         "title": job["title"] or default_title(job["filename"]),
         "finalized": job["finalized_revision"] == job["revision"],
+        "participants": participants(job),
+        "duration": job.get("duration"),
     }
 
 
@@ -137,7 +175,7 @@ def create_app(
                     overview = store.overview(job["id"])
                 except (OSError, ValueError, KeyError):
                     overview = None  # a missing or unreadable result must not hide the library
-            rows.append({**public_job(job), "overview": overview})
+            rows.append({**public_job(job), "overview": overview, "eta_sec": store.eta(job)})
         return rows
 
     @app.patch("/api/jobs/{job_id}")
@@ -147,6 +185,9 @@ def create_app(
         changes = {}
         if fields.get("title"):
             changes["title"] = fields["title"].strip()
+        if fields.get("participants") is not None:
+            names = list(dict.fromkeys(n.strip() for n in fields["participants"] if n.strip()))
+            changes["participants"] = json.dumps(names, ensure_ascii=False)
         if "finalized" in fields:
             changes["finalized_revision"] = job["revision"] if fields["finalized"] else None
         if changes:
@@ -186,11 +227,13 @@ def create_app(
             if temporary.exists():
                 temporary.unlink()
         store.create(job_id, filename, source)
+        store.update(job_id, duration=audio_duration(source))
         return {"job_id": job_id}
 
     @app.get("/api/jobs/{job_id}")
     def status(job_id: str):
-        return public_job(store.get(job_id))
+        job = store.get(job_id)
+        return {**public_job(job), "eta_sec": store.eta(job)}
 
     @app.get("/api/jobs/{job_id}/result")
     def result(job_id: str):

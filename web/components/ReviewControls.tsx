@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  askNotifyPermission,
   EditEvent,
   jsonBody,
   request,
@@ -326,6 +327,7 @@ export function UploadDialog({
       return setError("File cần nhỏ hơn 200 MB.");
     setUploading(true);
     setError("");
+    askNotifyPermission();
     try {
       const form = new FormData();
       form.append("file", file);

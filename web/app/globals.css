@@ -1872,6 +1872,40 @@ progress::-webkit-progress-value {
   pointer-events: auto;
   transform: translate(-50%, 0);
 }
+.toast button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--bg);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.eta {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.participants {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.participants form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.participants input {
+  flex: 1 1 260px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .toast a {
   color: var(--bg);
   font-weight: 600;

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  actionListText,
   API,
+  eta,
   date,
   duration,
   Job,
@@ -154,9 +156,29 @@ export function Workspace({
               href: `${API}/api/jobs/${jobId}/export?fmt=md`,
             },
           ],
+          actions: [
+            {
+              label: "Sao chép danh sách việc",
+              onClick: () => void copyActions(),
+            },
+          ],
         });
     } catch (err) {
       onError(err instanceof Error ? err.message : "Chưa chốt được biên bản.");
+    }
+  }
+  async function copyActions() {
+    menu.current?.removeAttribute("open");
+    if (!view) return;
+    try {
+      await navigator.clipboard.writeText(actionListText(view));
+      onToast({
+        text: "Đã sao chép danh sách việc để dán vào Zalo, Slack hoặc email.",
+      });
+    } catch {
+      onError(
+        "Trình duyệt chặn sao chép. Hãy cho phép quyền clipboard rồi thử lại.",
+      );
     }
   }
   async function regenerate() {
@@ -269,6 +291,10 @@ export function Workspace({
                         : "Phụ đề SRT"}
                   </a>
                 ))}
+                <button onClick={() => void copyActions()}>
+                  <Icon name="note" width="16" />
+                  Sao chép danh sách việc
+                </button>
                 <span className="menu-label">Biên bản</span>
                 <label className="menu-field">
                   Mẫu
@@ -311,6 +337,9 @@ export function Workspace({
         >
           <div className="processing-head">
             <h2>{STAGES[job?.stage || "queued"]}</h2>
+            {eta(job?.eta_sec) && (
+              <strong className="eta">{eta(job?.eta_sec)}</strong>
+            )}
             <span className="muted">
               {job?.stage === "M6"
                 ? "Đang tạo biên bản từ transcript hiện tại."

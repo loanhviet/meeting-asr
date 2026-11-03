@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { date, duration, Job, request } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { date, duration, eta, Job, notifyDone, request } from "@/lib/api";
+import type { Toast } from "./MeetingApp";
 import { Icon } from "./Icon";
 import { UploadDialog, useDropUpload } from "./ReviewControls";
 
@@ -69,11 +70,13 @@ export function Library({
   onOpen,
   onUpload,
   onError,
+  onToast,
   themeButton,
 }: {
   onOpen: (id: string) => void;
   onUpload: () => void;
   onError: (error: string) => void;
+  onToast: (toast: Toast) => void;
   themeButton: React.ReactNode;
 }) {
   const [jobs, setJobs] = useState<Job[] | null>(null);
@@ -81,6 +84,10 @@ export function Library({
   const [filter, setFilter] = useState<Filter>("all");
   const [dropped, setDropped] = useState<File | null>(null);
   const [now, setNow] = useState(() => Date.now() / 1000);
+  const seen = useRef(new Map<string, Job["status"]>());
+  // Parent callbacks change identity every render; polling must not restart for that.
+  const callbacks = useRef({ onToast, onOpen });
+  callbacks.current = { onToast, onOpen };
   const busy = jobs?.some(
     (j) => j.status === "queued" || j.status === "running",
   );
@@ -89,7 +96,31 @@ export function Library({
     let active = true;
     const load = () =>
       request<Job[]>("/api/jobs")
-        .then((list) => active && setJobs(list))
+        .then((list) => {
+          if (!active) return;
+          // Tell the user when a job they saw processing finishes.
+          for (const job of list) {
+            const before = seen.current.get(job.id);
+            if (
+              (before === "queued" || before === "running") &&
+              (job.status === "complete" || job.status === "failed")
+            ) {
+              const ok = job.status === "complete";
+              notifyDone(job.title, ok);
+              callbacks.current.onToast({
+                text: `${job.title}: ${ok ? "đã xử lý xong" : "xử lý chưa thành công"}`,
+                actions: [
+                  {
+                    label: "Mở",
+                    onClick: () => callbacks.current.onOpen(job.id),
+                  },
+                ],
+              });
+            }
+            seen.current.set(job.id, job.status);
+          }
+          setJobs(list);
+        })
         .catch(() => active && onError("Không tải được thư viện cuộc họp."));
     void load();
     const timer = setInterval(
@@ -191,8 +222,9 @@ export function Library({
           >
             <span className="row-title">{job.title}</span>
             <span className="muted">
-              {STAGES[job.stage] || "Đang xử lý"} · đã chạy{" "}
-              {Math.max(0, Math.round((now - job.created) / 60))} phút
+              {STAGES[job.stage] || "Đang xử lý"} ·{" "}
+              {eta(job.eta_sec) ||
+                `đã chạy ${Math.max(0, Math.round((now - job.created) / 60))} phút`}
             </span>
             <span className="bar">
               <span style={{ width: `${Math.round(job.progress * 100)}%` }} />

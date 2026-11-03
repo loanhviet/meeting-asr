@@ -10,7 +10,9 @@ const currentTime = (page: Page) =>
 
 test("upload opens the meeting with minutes first; edits, rename, finalize and export", async ({
   page,
+  context,
 }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await installFixture(page, { empty: true });
   await page.goto("/");
   await expect(page.getByText("Kéo bản ghi cuộc họp vào đây")).toBeVisible();
@@ -60,6 +62,14 @@ test("upload opens the meeting with minutes first; edits, rename, finalize and e
     page.getByRole("status").filter({ hasText: "Đã chốt biên bản." }),
   ).toBeVisible();
 
+  await page.getByLabel("Thêm thao tác").click();
+  await page
+    .locator(".menu-panel")
+    .getByRole("button", { name: "Sao chép danh sách việc" })
+    .click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+    "☐ Kiểm thử và gửi báo cáo kết quả — Bình — hạn: Thứ Năm",
+  );
   await page.getByLabel("Thêm thao tác").click();
   const download = page.waitForEvent("download");
   await page
@@ -169,6 +179,11 @@ test("speaker step names voices, plays a sample and merges a split speaker", asy
   await card.getByLabel("Gộp vào").selectOption("B");
   await card.getByRole("button", { name: "Gộp 1 lượt" }).click();
   await expect(page.locator("#speaker-C")).toHaveCount(0);
+  await page.getByRole("textbox", { name: "Người dự họp" }).fill("Trung, Đạt");
+  await page.getByRole("button", { name: "Lưu danh sách" }).click();
+  await expect(
+    page.locator(".suggest").first().getByRole("button", { name: "Trung" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: /^Xong/ }).click();
   await expect(page.locator('.turn[data-turn-id="0"] .turn-who')).toContainText(
     "Anh An",
@@ -176,6 +191,13 @@ test("speaker step names voices, plays a sample and merges a split speaker", asy
   await expect(page.locator('.turn[data-turn-id="3"] .turn-who')).toContainText(
     "Bình",
   );
+  await expect(
+    page
+      .locator(".action")
+      .first()
+      .getByLabel("Người làm")
+      .locator("option", { hasText: "Trung" }),
+  ).toHaveCount(1);
   await page.getByLabel("Thêm thao tác").click();
   await page.getByRole("button", { name: "Lịch sử chỉnh sửa" }).click();
   await expect(
@@ -276,6 +298,7 @@ test("unsupported upload, processing and failed state allow retry", async ({
   await expect(
     page.getByRole("heading", { name: "Đang chép lời" }),
   ).toBeVisible();
+  await expect(page.getByText("còn khoảng 3 phút")).toBeVisible();
   job.status = "failed";
   job.stage = "failed";
   job.error = "Không đọc được audio";

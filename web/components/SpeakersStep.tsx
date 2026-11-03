@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  Job,
   jsonBody,
   mentionedNames,
   request,
@@ -238,9 +239,35 @@ export function SpeakersStep(
     ]),
   );
   const used = new Set(Object.values(view.speaker_names));
-  const suggestions = mentionedNames(view.edited.turns)
+  const participants = view.participants || [];
+  const [draft, setDraft] = useState(participants.join(", "));
+  const suggestions = [
+    ...new Set([...participants, ...mentionedNames(view.edited.turns)]),
+  ]
     .filter((n) => !used.has(n))
-    .slice(0, 4);
+    .slice(0, 5);
+  async function saveParticipants(event: React.FormEvent) {
+    event.preventDefault();
+    const names = draft
+      .split(/[,;\n]/)
+      .map((n) => n.trim())
+      .filter(Boolean)
+      .slice(0, 30);
+    try {
+      const job = await request<Job>(
+        `/api/jobs/${props.jobId}`,
+        jsonBody({ participants: names }),
+      );
+      props.onView({ ...view, participants: job.participants || [] });
+      setDraft((job.participants || []).join(", "));
+    } catch (err) {
+      props.onError(
+        err instanceof Error
+          ? err.message
+          : "Chưa lưu được danh sách người dự.",
+      );
+    }
+  }
   const named = order.filter((id) => view.speaker_names[id]).length;
   const sorted = [...order].sort(
     (a, b) => (shares.get(b) || 0) - (shares.get(a) || 0),
@@ -280,6 +307,26 @@ export function SpeakersStep(
           <b>{named}</b> / {order.length} giọng đã có tên
         </span>
       </div>
+      <section className="participants" aria-label="Người dự họp">
+        <form onSubmit={(e) => void saveParticipants(e)}>
+          <label htmlFor="participants" className="sr-only">
+            Người dự họp
+          </label>
+          <input
+            id="participants"
+            value={draft}
+            placeholder="Người dự họp, cách nhau bằng dấu phẩy: Đạt, Trung, Hải…"
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <button className="btn" type="submit">
+            Lưu danh sách
+          </button>
+        </form>
+        <p className="muted">
+          Dùng để gợi ý tên và chọn người làm. Máy có thể nghe sai tên riêng (ví
+          dụ “Chung” thay vì “Trung”); danh sách giúp bạn sửa bằng một lần chọn.
+        </p>
+      </section>
       <div className="speaker-grid">
         {sorted.map((id) => (
           <SpeakerCard
