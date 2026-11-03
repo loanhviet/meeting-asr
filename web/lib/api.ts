@@ -10,6 +10,20 @@ export type Job = {
   created: number;
   revision: number;
   summary_error: string | null;
+  title: string;
+  finalized: boolean;
+  overview?: Overview | null;
+};
+export type Overview = {
+  duration: number;
+  speakers: number;
+  unnamed_speakers: number;
+  decisions: number;
+  actions: number;
+  actions_done: number;
+  to_review: number;
+  has_minutes: boolean;
+  summary_stale: boolean;
 };
 export type Turn = {
   turn_id: string;
@@ -24,6 +38,7 @@ export type Turn = {
   reviewed: boolean;
   original_text: string;
   original_speaker: string;
+  backchannel?: boolean;
 };
 export type EvidenceSource = Pick<
   Turn,
@@ -41,6 +56,7 @@ export type ActionItem = Omit<Claim, "text"> & {
   speaker: string | null;
   task: string;
   deadline: string | null;
+  done?: boolean;
 };
 export type Minutes = {
   audio_id: string;
@@ -64,6 +80,9 @@ export type ResultView = {
   summary_revision?: number | null;
   summary_template?: string;
   summary_grounded?: boolean;
+  title: string;
+  finalized: boolean;
+  review_turn_ids: string[];
 };
 export type EditEvent = {
   id: number;
@@ -118,3 +137,74 @@ export function time(seconds: number) {
 }
 export const speakerId = (turn: Turn) =>
   turn.speaker_id || turn.original_speaker;
+
+export const jsonBody = (body: unknown, method = "PATCH"): RequestInit => ({
+  method,
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+export const date = (created: number) =>
+  new Date(created * 1000).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+export function duration(seconds: number) {
+  const minutes = Math.round(seconds / 60);
+  return minutes < 1 ? `${Math.round(seconds)} giây` : `${minutes} phút`;
+}
+/** Stable speaker order (first appearance) drives the speaker colour. */
+export function speakerOrder(turns: Turn[]) {
+  return [...new Set(turns.map(speakerId))];
+}
+export const speakerClass = (order: string[], id: string) =>
+  `sp${Math.max(0, order.indexOf(id)) % 8}`;
+const NOT_NAMES = new Set(
+  (
+    "ấy ơi à ạ nhé nhá thì là có không cũng nói làm gửi đã sẽ ta mình hay và với cho này kia đó " +
+    "nghĩ thấy biết muốn phải xem hỏi hiểu cần đi thích nhầm tạo thằng ấy bảo đang vẫn chưa"
+  ).split(" "),
+);
+/** Names called out in the meeting ("anh Thắng", "chị Phương"): naming hints, never labels.
+ *  ASR text is lower case, so a word counts only if it mostly follows a form of address;
+ *  "em" is left out because it is also "I" ("em nghĩ"). */
+export function mentionedNames(turns: Turn[]) {
+  const after = new Map<string, number>();
+  const total = new Map<string, number>();
+  const kin = new Set("anh chị bạn cô thầy ông bà".split(" "));
+  for (const turn of turns) {
+    const words = turn.text
+      .toLocaleLowerCase("vi")
+      .split(/[^\p{L}]+/u)
+      .filter(Boolean);
+    words.forEach((word, i) => {
+      total.set(word, (total.get(word) || 0) + 1);
+      if (i && kin.has(words[i - 1]) && word.length > 1 && !NOT_NAMES.has(word))
+        after.set(word, (after.get(word) || 0) + 1);
+    });
+  }
+  return [...after]
+    .filter(([w, n]) => n >= 2 && n / (total.get(w) || n) >= 0.6)
+    .sort((a, b) => b[1] - a[1])
+    .map(([w]) => w[0].toLocaleUpperCase("vi") + w.slice(1));
+}
+/** Minutes items (decisions and actions) citing a turn, for review context. */
+export function claimsFor(minutes: Minutes, turnId: string) {
+  return [
+    ...(minutes.decisions || []).map((d) => ({
+      kind: "Quyết định",
+      text: d.text,
+      ids: d.source_turn_ids,
+    })),
+    ...minutes.action_items.map((a) => ({
+      kind: "Việc cần làm",
+      text: a.task,
+      ids: a.source_turn_ids,
+    })),
+    ...(minutes.summary_points || []).map((p) => ({
+      kind: "Tóm tắt",
+      text: p.text,
+      ids: p.source_turn_ids,
+    })),
+  ].filter((c) => c.ids?.includes(turnId));
+}

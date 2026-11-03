@@ -103,3 +103,89 @@ def test_speaker_review_api_and_template_validation(tmp_path):
             client.post(f"/api/jobs/{job_id}/summary", json={"template": "unknown"}).status_code
             == 422
         )
+
+
+def test_titles_finalize_action_edits_overview_and_moved_audio(tmp_path):
+    def processor(source, config, out, progress):
+        turns = [
+            Turn("t0", 0, 5, "A", "An viết báo cáo trước thứ Sáu", [], flagged=True),
+            Turn("t1", 5, 9, "B", "ừ ừ ừ ừ", [], flagged=True, flag_reasons=["nghi lặp/ảo giác"]),
+            Turn("t2", 9, 12, "B", "Không liên quan", [], flagged=True),
+        ]
+        minutes = MeetingMinutes("x", 12, 2, turns, summary="Họp")
+        minutes.summary_points = [{"text": "Họp", "source_turn_ids": ["t0"], "uncertain": False}]
+        minutes.action_items = [
+            {
+                "speaker": None,
+                "task": "Viết báo cáo",
+                "deadline": None,
+                "source_turn_ids": ["t0"],
+                "uncertain": False,
+            }
+        ]
+        write_minutes_json(out / "minutes.json", minutes)
+
+    app = create_app(load_config(), tmp_path, processor=processor, start_worker=False)
+    store = app.state.store
+    with TestClient(app) as client:
+        job_id = client.post("/api/jobs", files={"file": ("hop_nhom_2.wav", b"RIFF")}).json()[
+            "job_id"
+        ]
+        app.state.worker.process_one(job_id)
+        # A job created inside Docker keeps an /app/... path; the audio is still found locally.
+        with store.connect() as db:
+            db.execute(
+                "UPDATE jobs SET source=? WHERE id=?", (f"/app/x/{job_id}/audio.wav", job_id)
+            )
+        assert client.get(f"/api/jobs/{job_id}/audio").status_code == 200
+
+        job = client.get("/api/jobs").json()[0]
+        assert job["title"] == "hop nhom 2" and not job["finalized"]
+        assert job["overview"] == {
+            "duration": 12,
+            "speakers": 2,
+            "unnamed_speakers": 2,
+            "decisions": 0,
+            "actions": 1,
+            "actions_done": 0,
+            "to_review": 2,
+            "has_minutes": True,
+            "summary_stale": False,
+        }
+        view = client.get(f"/api/jobs/{job_id}/result").json()
+        # Cited turn and decoding loop need a listen; an uncited ordinary flag does not.
+        assert view["review_turn_ids"] == ["t0", "t1"]
+
+        renamed = client.patch(
+            f"/api/jobs/{job_id}", json={"title": "Họp nhóm 2", "finalized": True}
+        )
+        assert renamed.json()["title"] == "Họp nhóm 2" and renamed.json()["finalized"]
+        view = client.patch(
+            f"/api/jobs/{job_id}/actions/0",
+            json={"speaker": "An", "deadline": "Thứ Sáu", "done": True},
+        ).json()
+        assert view["edited"]["action_items"][0] | {"sources": None} == {
+            "speaker": "An",
+            "task": "Viết báo cáo",
+            "deadline": "Thứ Sáu",
+            "done": True,
+            "source_turn_ids": ["t0"],
+            "uncertain": False,
+            "sources": None,
+            "evidence_missing": False,
+            "needs_review": True,
+        }
+        assert client.patch(f"/api/jobs/{job_id}/actions/5", json={"done": True}).status_code == 404
+        exported = client.get(f"/api/jobs/{job_id}/export?fmt=md").text
+        assert "# Biên bản họp — Họp nhóm 2" in exported and "- [x] An: Viết báo cáo" in exported
+
+        # Editing the transcript after finalizing reopens the meeting.
+        client.patch(f"/api/jobs/{job_id}/turns/t0", json={"text": "sửa", "expected_revision": 0})
+        assert not client.get(f"/api/jobs/{job_id}").json()["finalized"]
+        # Re-running the pipeline produces new minutes, so the action edits are dropped.
+        store.update(job_id, status="failed")
+        store.retry(job_id)
+        app.state.worker.process_one(job_id)
+        assert not client.get(f"/api/jobs/{job_id}/result").json()["edited"]["action_items"][0][
+            "done"
+        ]

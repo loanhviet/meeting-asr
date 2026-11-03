@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from meeting_asr.ask import AskMeeting, transcript_hash
-from meeting_asr.jobs import JobStore, JobWorker, RevisionConflict, new_job_id
+from meeting_asr.jobs import JobStore, JobWorker, RevisionConflict, default_title, new_job_id
 from meeting_asr.pipeline import project_path, run_pipeline
 from meeting_asr.settings import config_hash, load_config
 
@@ -38,6 +38,17 @@ class SummaryRequest(BaseModel):
     template: Literal["project", "standup", "customer"] = "project"
 
 
+class JobUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    finalized: bool | None = None
+
+
+class ActionUpdate(BaseModel):
+    speaker: str | None = Field(default=None, max_length=100)
+    deadline: str | None = Field(default=None, max_length=100)
+    done: bool | None = None
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     expected_revision: int = Field(ge=0)
@@ -57,6 +68,9 @@ def public_job(job):
             "revision",
             "summary_error",
         )
+    } | {
+        "title": job["title"] or default_title(job["filename"]),
+        "finalized": job["finalized_revision"] == job["revision"],
     }
 
 
@@ -115,7 +129,36 @@ def create_app(
 
     @app.get("/api/jobs")
     def list_jobs():
-        return [public_job(job) for job in store.list_jobs()]
+        rows = []
+        for job in store.list_jobs():
+            overview = None
+            if job["status"] == "complete":
+                try:
+                    overview = store.overview(job["id"])
+                except (OSError, ValueError, KeyError):
+                    overview = None  # a missing or unreadable result must not hide the library
+            rows.append({**public_job(job), "overview": overview})
+        return rows
+
+    @app.patch("/api/jobs/{job_id}")
+    def update_job(job_id: str, update: JobUpdate):
+        job = store.get(job_id)
+        fields = update.model_dump(exclude_unset=True)
+        changes = {}
+        if fields.get("title"):
+            changes["title"] = fields["title"].strip()
+        if "finalized" in fields:
+            changes["finalized_revision"] = job["revision"] if fields["finalized"] else None
+        if changes:
+            store.update(job_id, **changes)
+        return public_job(store.get(job_id))
+
+    @app.patch("/api/jobs/{job_id}/actions/{index}")
+    def update_action(job_id: str, index: int, update: ActionUpdate):
+        try:
+            return store.update_action(job_id, index, **update.model_dump(exclude_unset=True))
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @app.post("/api/jobs", status_code=202)
     async def upload(file: Annotated[UploadFile, File()]):
