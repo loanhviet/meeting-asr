@@ -1,0 +1,27 @@
+---
+title: 04 - Container Diagram
+---
+flowchart TB
+ U["Meeting reviewer<br/>[Person]"]
+ O["Research operator<br/>[Person]"]
+ subgraph S["Meeting Minutes ASR / System Boundary"]
+  UI["Browser UI<br/>[Container: React / TypeScript]<br/>Meeting review and audio player"]
+  WEB["Web server<br/>[Container: Next.js / Node.js]<br/>Serves UI; /api rewrite in Compose"]
+  API["Backend application<br/>[Container: FastAPI / Python]<br/>REST, JobWorker thread;<br/>child inference process"]
+  CLI["Research CLI<br/>[Container: Python]<br/>Direct pipeline and evaluation"]
+  DB[("Job database<br/>[Data Store: SQLite WAL]<br/>Jobs, edits, names and answers")]
+  DISK[("Artifacts and caches<br/>[Data Store: Filesystem]<br/>Audio, JSON, RTTM and checkpoints")]
+ end
+ U -->|Uses| UI
+ O -->|Runs / Shell| CLI
+ UI -->|Loads UI and sends /api / HTTP in Compose| WEB
+ WEB -->|Proxies /api / HTTP| API
+ API -->|Reads and writes / sqlite3| DB
+ API -->|Reads and writes / Files| DISK
+ CLI -->|Writes outputs and caches / Files| DISK
+ classDef person fill:#dbeafe,stroke:#1d4ed8,color:#0f172a
+ classDef container fill:#eff6ff,stroke:#2563eb,color:#0f172a
+ classDef store fill:#f0fdfa,stroke:#0f766e,color:#0f172a
+ class U,O person
+ class UI,WEB,API,CLI container
+ class DB,DISK store

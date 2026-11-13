@@ -1,0 +1,44 @@
+---
+title: 07 - Meeting Processing Sequence Diagram
+---
+sequenceDiagram
+ autonumber
+ actor User as Meeting reviewer
+ participant UI as Browser UI
+ participant API as FastAPI
+ participant Store as JobStore
+ participant Worker as JobWorker thread
+ participant Pipe as run_pipeline
+ User->>UI: Select audio file
+ UI->>API: POST /api/jobs (multipart)
+ API->>API: Validate suffix, nonempty and size <= 200 MiB
+ API->>API: Persist audio file
+ API->>Store: create(job_id, filename, source)
+ Store-->>API: queued job
+ API-->>UI: HTTP 202 {job_id}
+ par Background processing
+  Worker->>Store: Select oldest queued job
+  Store-->>Worker: job
+  Worker->>Store: status = running
+  Worker->>Pipe: processor(source, config, artifacts, progress)
+  loop Stage progress callbacks
+   Pipe->>Worker: progress(stage, fraction)
+   Worker->>Store: Update stage and progress
+  end
+  Pipe->>Pipe: Write transcript, RTTM, minutes and run artifacts
+  Pipe-->>Worker: MeetingMinutes
+  Worker->>Store: summary_revision, summary_error and complete
+ and UI polling while selected
+  loop Every 1500 ms, with pending-request guard
+   UI->>API: GET /api/jobs/{id} and GET /api/jobs
+   API->>Store: Read job metadata
+   Store-->>API: Status, stage, progress and revision
+   API-->>UI: JSON responses
+  end
+ end
+ UI->>API: GET /api/jobs/{id}/result
+ API->>Store: result(job_id)
+ Store->>Store: Merge original minutes and SQL overlays
+ Store-->>API: ResultView
+ API-->>UI: original, edited, revision, summary_stale
+ UI-->>User: Show transcript and available minutes

@@ -1,0 +1,19 @@
+---
+title: 03 - System Context Diagram
+---
+flowchart TB
+ R["Meeting reviewer<br/>[Person]<br/>Uploads, reviews and exports"]
+ O["Research operator<br/>[Person]<br/>Runs CLI and evaluations"]
+ S["Meeting Minutes ASR<br/>[Software System]<br/>File-based ASR and speaker review;<br/>optional minutes and questions"]
+ H["Hugging Face Hub<br/>[External Software System]<br/>Checkpoint distribution"]
+ L["Configured LLM endpoint<br/>[External Software System]<br/>HTTP-compatible or Claude adapter"]
+ R -->|Uses browser / HTTP| S
+ O -->|Runs CLI| S
+ S -->|Fetches model checkpoints / HTTPS| H
+ S -->|Sends transcript text for JSON completions / HTTP or HTTPS| L
+ classDef person fill:#dbeafe,stroke:#1d4ed8,color:#0f172a
+ classDef system fill:#1d4ed8,stroke:#1e40af,color:#ffffff
+ classDef external fill:#f1f5f9,stroke:#64748b,color:#0f172a
+ class R,O person
+ class S system
+ class H,L external

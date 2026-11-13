@@ -1,7 +1,7 @@
 # Lưu trữ dữ liệu và API
 
 Nguồn: [jobs.py](../src/meeting_asr/jobs.py), [api.py](../src/meeting_asr/api.py),
-[models.py](../src/meeting_asr/models.py). Xem [kiến trúc](SAD.md) và [triển khai](DEPLOYMENT.md).
+[models.py](../src/meeting_asr/models.py). Xem [kiến trúc](design/README.md) và [triển khai](DEPLOYMENT.md).
 
 ## Mô hình lưu trữ
 

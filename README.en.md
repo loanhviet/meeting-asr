@@ -13,7 +13,7 @@ A local application that turns Vietnamese meeting recordings into speaker-attrib
 - Versioned speech annotations, an offline listening/review page, speech-based simulation and dataset readiness checks.
 - RQ1–RQ3 evaluation and benchmark reports including per-stage time and peak allocated GPU memory.
 
-All design, test, deployment and user documentation lives in [docs/](docs/). See the [architecture](docs/SAD.md), [DiCoW setup](docs/DICOW.md), [quality evidence and limitations](https://github.com/loanhviet/meeting-asr/blob/0b641e4/DICOW_COMPARISON.md), and [acceptance workflow](docs/ACCEPTANCE.md).
+All design, test, deployment and user documentation lives in [docs/](docs/). See the [architecture](docs/design/README.md), [DiCoW setup](docs/DICOW.md), [quality evidence and limitations](https://github.com/loanhviet/meeting-asr/blob/0b641e4/DICOW_COMPARISON.md), and [acceptance workflow](docs/ACCEPTANCE.md).
 
 ## Run locally
 

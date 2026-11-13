@@ -1,0 +1,42 @@
+---
+title: 09 - Meeting Questions Sequence Diagram
+---
+sequenceDiagram
+ autonumber
+ participant UI as AskMeetingPanel
+ participant API as FastAPI
+ participant DB as JobStore
+ participant Ask as AskMeeting
+ participant L as Configured LLM endpoint
+ UI->>API: POST /api/jobs/{id}/questions<br/>{question, expected_revision}
+ API->>DB: result(job_id)
+ DB-->>API: Edited turns and revision snapshot
+ API->>API: Check question, revision and LLM configuration
+ Note over API: Mismatched revision / disabled or incomplete LLM: HTTP 409
+ API->>DB: Lookup request key<br/>(provider identity, question, revision, transcript hash)
+ alt Valid cached answer
+  DB-->>API: Current answer payload
+ else No cached answer
+  API->>Ask: answer(question, turns)
+  Ask->>Ask: BM25 passages + adjacent turns / bound context
+  alt No context retrieved
+   Ask-->>API: not_found, empty answer_points
+  else Context available
+   loop Up to 2 JSON / ID attempts
+    Ask->>L: Question and retrieved text with source IDs
+    L-->>Ask: Completion JSON
+    Ask->>Ask: Validate schema and retrieved source IDs
+   end
+   Ask->>Ask: Attach full source turns and needs_review flags
+   Ask-->>API: found or not_found payload
+  end
+ end
+ API->>DB: save_answer under BEGIN IMMEDIATE<br/>Check revision again / upsert request key
+ alt Revision still matches
+  DB-->>API: Saved answer with revision
+  API-->>UI: HTTP 200 answer and sources
+ else Transcript changed during request
+  DB-->>API: RevisionConflict
+  API-->>UI: HTTP 409 / reload and ask again
+ end
+ Note over API,L: Provider / answer errors: HTTP 502 generic message.<br/>Q&A runs in the API request, outside JobWorker.

@@ -1,0 +1,50 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam componentStyle uml2
+skinparam dpi 144
+skinparam packageBackgroundColor #F1F5F9
+skinparam rectangleBackgroundColor #EFF6FF
+skinparam componentBackgroundColor #EFF6FF
+skinparam usecaseBackgroundColor #EFF6FF
+skinparam activityBackgroundColor #EFF6FF
+skinparam activityDiamondBackgroundColor #FEF3C7
+skinparam noteBackgroundColor #F0FDFA
+skinparam noteBorderColor #0F766E
+title 01 - Use Case Diagram
+left to right direction
+actor "Meeting reviewer" as Reviewer
+actor "Research operator" as Researcher
+rectangle "Meeting Minutes ASR" {
+ usecase "Upload audio and\ntrack processing" as Upload
+ usecase "Listen, review and\nedit transcript" as Review
+ usecase "Rename, reassign and\nmerge speakers" as Speakers
+ usecase "Generate / regenerate\ngrounded minutes" as Summary
+ usecase "Ask meeting questions\nwith citations" as Ask
+ usecase "Export Markdown,\nSRT or PDF" as Export
+ usecase "Run file processing\nfrom the CLI" as Run
+ usecase "Prepare / simulate data\nand evaluate results" as Evaluate
+ usecase "Propose transcript\ncorrections from the CLI" as Correct
+}
+Reviewer -- Upload
+Reviewer -- Review
+Reviewer -- Speakers
+Reviewer -- Summary
+Reviewer -- Ask
+Reviewer -- Export
+Researcher -- Run
+Researcher -- Evaluate
+Researcher -- Correct
+note right of Summary
+ Requires enabled, configured LLM.
+ Questions do not require a summary.
+end note
+note bottom of Researcher
+ No accounts or access roles are implemented.
+end note
+@enduml

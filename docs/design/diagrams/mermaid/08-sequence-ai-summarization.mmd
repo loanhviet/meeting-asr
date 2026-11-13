@@ -1,0 +1,45 @@
+---
+title: 08 - AI Summarization Sequence Diagram
+---
+sequenceDiagram
+ autonumber
+ participant UI as Browser UI
+ participant API as FastAPI
+ participant Store as JobStore
+ participant W as JobWorker
+ participant S as Summarizer
+ participant C as Summary disk cache
+ participant L as Configured LLM endpoint
+ UI->>API: POST /api/jobs/{id}/summary {template}
+ API->>Store: Require result and status complete or failed
+ API->>API: Require llm.enabled
+ API->>Store: Set kind=summary, status=queued, template
+ API-->>UI: HTTP 202 {job_id}
+ W->>Store: Pick job / set running / result(job_id)
+ Store-->>W: Edited turns and revision snapshot
+ W->>W: Clear flagged on reviewed turns / stage M6
+ W->>S: summarize(turns)
+ S->>S: Split text to bounded chunks, preserving turn IDs
+ loop Each chunk
+  S->>C: Read identity + text + source-ID cache key
+  alt Valid cache hit
+   C-->>S: Validated summary JSON
+  else Cache miss or invalid entry
+   loop Up to 2 JSON / ID attempts
+    S->>L: Completion request (chunk text and allowed IDs)
+    L-->>S: Completion text
+    S->>S: validate_summary(require_grounded=True)
+   end
+   S->>C: Save validated chunk response
+  end
+ end
+ S->>S: Merge unique items / propagate uncertainty from flags
+ S-->>W: Summary fields
+ W->>Store: Save summary_json and snapshot summary_revision
+ W->>Store: Set status=complete
+ UI->>API: GET /api/jobs/{id}/result
+ API->>Store: result() / derive stale and resolve evidence
+ Store-->>API: Sources use transcript timestamps and speakers
+ API-->>UI: Edited minutes and summary_stale
+ Note over W,Store: If regeneration raises an exception, job becomes failed.<br/>POST /retry keeps kind=summary and reruns only M6.
+ Note over S,L: Provider/network failures are not retried by the JSON repair loop.

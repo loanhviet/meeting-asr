@@ -3,7 +3,7 @@
 Nguồn: [README.md](../README.md), [compose.yaml](../compose.yaml),
 [compose.gpu.yaml](../compose.gpu.yaml), [Dockerfile](../Dockerfile),
 [web/Dockerfile](../web/Dockerfile), [.env.example](../.env.example).
-Xem [kiến trúc](SAD.md) và [dữ liệu/API](DATABASE_API.md).
+Xem [kiến trúc](design/README.md) và [dữ liệu/API](DATABASE_API.md).
 
 ## Chuẩn bị
 

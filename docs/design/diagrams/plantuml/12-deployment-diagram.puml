@@ -1,0 +1,61 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam componentStyle uml2
+skinparam dpi 144
+skinparam packageBackgroundColor #F1F5F9
+skinparam rectangleBackgroundColor #EFF6FF
+skinparam componentBackgroundColor #EFF6FF
+skinparam usecaseBackgroundColor #EFF6FF
+skinparam activityBackgroundColor #EFF6FF
+skinparam activityDiamondBackgroundColor #FEF3C7
+skinparam noteBackgroundColor #F0FDFA
+skinparam noteBorderColor #0F766E
+title 12 - Deployment Diagram
+top to bottom direction
+node "Developer host" as Host {
+ node "Local browser runtime" <<executionEnvironment>> {
+  artifact "React client bundle" as Browser
+ }
+ node "Docker Compose network" {
+  node "web service\nNode.js 24 / Next.js standalone\ncontainer TCP 3000" as Web {
+   artifact "server.js + static assets" as Server
+  }
+  node "api service\nPython 3.12\ncontainer TCP 8000" as API {
+   node "Main Python environment" <<executionEnvironment>> {
+    artifact "FastAPI + JobWorker thread" as App
+   }
+   node "Author Python environment\n/opt/dicow/venv" <<executionEnvironment>> {
+    artifact "dicow_runner child process\nDiariZen then DiCoW" as Runner
+   }
+  }
+ }
+ folder "Bind mounts" {
+  folder "./results -> /app/results\naudio, SQLite and artifacts" as Results
+  folder "./.cache -> /app/.cache\nstage / summary caches" as Cache
+  folder "HF_CACHE_PATH ->\n/app/.cache/huggingface" as HFCache
+  folder "./data -> /app/data" as Data
+ }
+}
+cloud "Hugging Face Hub" as HF
+cloud "Configured LLM endpoint" as LLM
+Browser --> Web : HTTP\n127.0.0.1:3000 by default
+Web --> API : HTTP /api/*\nhttp://api:8000
+App --> Runner : local subprocess
+App --> Results : read / write
+App --> Cache : read / write
+API --> Data : mounted input data
+Runner --> HFCache : checkpoint cache
+Runner --> HF : HTTPS checkpoint downloads
+App --> LLM : optional HTTP(S) completions
+note bottom of API
+ Default build target: cpu.
+ compose.gpu.yaml selects gpu + gpus: all.
+ API port is not published to the host.
+end note
+@enduml

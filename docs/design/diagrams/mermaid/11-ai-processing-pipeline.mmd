@@ -1,0 +1,23 @@
+---
+title: 11 - AI Processing Pipeline
+---
+flowchart TB
+ A["WAV / MP3 / M4A"] --> M1["M1 Preprocess<br/>FFmpeg + soxr; mono 16 kHz float32"]
+ M1 --> E{"asr.engine"}
+ E -->|dicow: default| D["M2 DiariZen<br/>Speaker activity annotation"]
+ D --> MASK["STNO target masks<br/>Silence / Target / Non-target / Overlap"]
+ MASK --> DC["M3 DiCoW with pretrained FDDT<br/>Full audio; sequential target decoding"]
+ M1 -->|Full audio| DC
+ E -->|whisper: explicit baseline| B["M2 Pyannote or ECAPA<br/>Speaker segments"]
+ B --> BW["M3 PhoWhisper<br/>Audio cuts; optional context merging"]
+ DC --> T["TranscriptDocument<br/>Utterances, speakers and model timestamps"]
+ BW --> T
+ T --> P["M4 Postprocess<br/>Merge turns; normalize display text"]
+ P --> C["M5 Confidence<br/>Available signals; duration-budget review flags"]
+ C --> L{"LLM enabled?"}
+ L -->|Yes| S["M6 Summarizer<br/>Bounded chunks; validated source turn IDs"]
+ L -->|No| OUT["minutes.json and run.json<br/>Transcript and review flags"]
+ S --> OUT
+ D --> R["diarization.rttm<br/>diarsignals.json"]
+ B --> R
+ T --> TJ["transcript.json"]

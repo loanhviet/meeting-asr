@@ -4,7 +4,7 @@ Hệ thống biên bản họp tiếng Việt: phân người nói, phiên âm, 
 
 Toàn bộ tài liệu thiết kế, kiểm thử, triển khai và hướng dẫn sử dụng nằm trong [docs/](docs/). Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm và checklist nghiệm thu: [TESTING.md](docs/TESTING.md).
 
-Kết quả DiCoW và giới hạn: [DICOW_COMPARISON.md](https://github.com/loanhviet/meeting-asr/blob/0b641e4/DICOW_COMPARISON.md). Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](docs/ACCEPTANCE.md). Có [sơ đồ kiến trúc](docs/SAD.md) và [README tiếng Anh](README.en.md).
+Kết quả DiCoW và giới hạn: [DICOW_COMPARISON.md](https://github.com/loanhviet/meeting-asr/blob/0b641e4/DICOW_COMPARISON.md). Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](docs/ACCEPTANCE.md). Có [sơ đồ kiến trúc](docs/design/README.md) và [README tiếng Anh](README.en.md).
 
 Quy trình chọn decoding trên dev, bộ chấm MeetEval cpWER/tcpWER/tcORC-WER và kiểm tra API thật bằng `llm-check --probe`: [ASR_IMPROVEMENT_WORKFLOW.md](docs/experiments/ASR_IMPROVEMENT_WORKFLOW.md).
 

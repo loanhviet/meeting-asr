@@ -34,9 +34,12 @@ web/test-results/
 docs/*
 !docs/*.md
 !docs/experiments/
+!docs/design/
 docs/CONTEXT.md
 docs/PLAN.md
 docs/CSE457*
+# Legacy local notes/audio (tracked experiment reports moved to docs/experiments/)
+document/
 data/
 results/*
 !results/experiments.csv
