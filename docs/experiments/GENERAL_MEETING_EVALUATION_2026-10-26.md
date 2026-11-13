@@ -224,7 +224,7 @@ không dùng timing của chúng để kết luận thông lượng hoặc SLA.
    dữ liệu và phân loại lỗi lặp có hệ thống.
 
 Đầu ra và tiêu chí từng mốc ở
-[kế hoạch chi tiết](GENERAL_MEETING_PLAN_2026-10-26.md).
+[kế hoạch chi tiết](https://github.com/loanhviet/meeting-asr/blob/0b641e4/document/GENERAL_MEETING_PLAN_2026-10-26.md).
 
 ## Artifact và tái chạy
 
@@ -260,4 +260,4 @@ Tổng hợp/tạo lại báo cáo từ artifact đã lưu, không gọi model/A
 Tạo lượt inference mới bằng thư mục output mới qua `prepare`, `run`,
 `prepare-diarization`, `run-diarization`, `collect` của script evaluation.
 `prepare_general_meeting_sources.py` kiểm checksum audio AMI; hướng dẫn dựng
-kho còn lại ở [EVALUATION_DATA_2026-10-22.md](EVALUATION_DATA_2026-10-22.md).
+kho còn lại ở [EVALUATION_DATA_2026-10-22.md](https://github.com/loanhviet/meeting-asr/blob/0b641e4/document/EVALUATION_DATA_2026-10-22.md).

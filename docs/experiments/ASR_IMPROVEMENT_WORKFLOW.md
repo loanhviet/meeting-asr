@@ -16,7 +16,7 @@ uv pip install --python .cache/paper-eval/venv/bin/python \
 ```
 
 Kho VietMed/FLEURS dev đã được chuẩn bị theo
-[hướng dẫn dữ liệu](EVALUATION_DATA_2026-10-22.md). Chuẩn bị vòng mới bằng:
+[hướng dẫn dữ liệu](https://github.com/loanhviet/meeting-asr/blob/0b641e4/document/EVALUATION_DATA_2026-10-22.md). Chuẩn bị vòng mới bằng:
 
 ```sh
 .venv/bin/python scripts/prepare_asr_improvement.py --download-sources

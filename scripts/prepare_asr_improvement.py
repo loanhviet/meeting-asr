@@ -18,7 +18,7 @@ from meeting_asr.models import Segment, TranscriptDocument, Utterance
 PROJECT = Path(__file__).resolve().parents[1]
 SEED = 20261026
 NITE = "{http://nite.sourceforge.net/}id"
-SOURCE_LOCK = PROJECT / "document/asr_improvement_sources.lock.json"
+SOURCE_LOCK = PROJECT / "docs/experiments/asr_improvement_sources.lock.json"
 
 
 def download_sources(root, lock=SOURCE_LOCK):

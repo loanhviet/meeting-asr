@@ -1,6 +1,6 @@
 # Chạy và nghiệm thu
 
-CLI/API/Docker hiện mặc định chạy DiariZen + DiCoW; xem [DICOW.md](DICOW.md). Hệ Pyannote/ECAPA + PhoWhisper chỉ chạy bằng cấu hình đối chứng tường minh. Snapshot hệ cũ ngày 06/10/2026: [RELEASE_STATUS.md](RELEASE_STATUS.md). Các bước mới cho nhãn speech/ngữ cảnh ASR, cổng dữ liệu và nghiệm thu LLM/họp thật nằm trong [ACCEPTANCE.md](ACCEPTANCE.md); tài liệu này giữ các lệnh setup và kiểm tra luồng nền tảng.
+CLI/API/Docker hiện mặc định chạy DiariZen + DiCoW; xem [DICOW.md](DICOW.md). Hệ Pyannote/ECAPA + PhoWhisper chỉ chạy bằng cấu hình đối chứng tường minh. Snapshot hệ cũ ngày 06/10/2026: [RELEASE_STATUS.md](https://github.com/loanhviet/meeting-asr/blob/0b641e4/RELEASE_STATUS.md). Các bước mới cho nhãn speech/ngữ cảnh ASR, cổng dữ liệu và nghiệm thu LLM/họp thật nằm trong [ACCEPTANCE.md](ACCEPTANCE.md); tài liệu này giữ các lệnh setup và kiểm tra luồng nền tảng.
 
 ## 1. Môi trường local
 

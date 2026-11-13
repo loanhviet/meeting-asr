@@ -18,8 +18,7 @@ def main():
     for name in [
         "pyproject.toml",
         "README.md",
-        "DICOW.md",
-        "DICOW_COMPARISON.md",
+        "docs/DICOW.md",
         "uv.lock",
         "scripts/setup_dicow.py",
         "scripts/compare_dicow.py",

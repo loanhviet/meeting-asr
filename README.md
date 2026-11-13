@@ -2,19 +2,19 @@
 
 Hệ thống biên bản họp tiếng Việt: phân người nói, phiên âm, đánh dấu lượt nói cần soát, tóm tắt và trích việc cần làm. Luồng chính là **DiariZen → STNO/FDDT → DiCoW đa ngôn ngữ**, dùng checkpoint tác giả. Có pipeline CLI, công cụ đánh giá, FastAPI/SQLite và website Next.js để xem/sửa/export. Pyannote/ECAPA + PhoWhisper được giữ riêng làm baseline thí nghiệm. **Code đã có; chất lượng model và kết quả nghiên cứu cần nghiệm thu trên dữ liệu thật.** Tỷ lệ từ còn sai của RQ3 không phải WER cả file.
 
-Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm và checklist nghiệm thu: [TESTING.md](TESTING.md).
+Toàn bộ tài liệu thiết kế, kiểm thử, triển khai và hướng dẫn sử dụng nằm trong [docs/](docs/). Hướng dẫn setup token, chạy demo, chuẩn bị dữ liệu, thí nghiệm và checklist nghiệm thu: [TESTING.md](docs/TESTING.md).
 
-Kết quả DiCoW và giới hạn: [DICOW_COMPARISON.md](DICOW_COMPARISON.md). [RELEASE_STATUS.md](RELEASE_STATUS.md) giữ snapshot hệ cũ ngày 06/10. Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](ACCEPTANCE.md). Có [sơ đồ kiến trúc](ARCHITECTURE.md) và [README tiếng Anh](README.en.md).
+Kết quả DiCoW và giới hạn: [DICOW_COMPARISON.md](https://github.com/loanhviet/meeting-asr/blob/0b641e4/DICOW_COMPARISON.md). Luồng nhãn speech, cổng dữ liệu, đánh giá LLM/họp thật và benchmark: [ACCEPTANCE.md](docs/ACCEPTANCE.md). Có [sơ đồ kiến trúc](docs/SAD.md) và [README tiếng Anh](README.en.md).
 
-Quy trình chọn decoding trên dev, bộ chấm MeetEval cpWER/tcpWER/tcORC-WER và kiểm tra API thật bằng `llm-check --probe`: [ASR_IMPROVEMENT_WORKFLOW.md](document/ASR_IMPROVEMENT_WORKFLOW.md).
+Quy trình chọn decoding trên dev, bộ chấm MeetEval cpWER/tcpWER/tcORC-WER và kiểm tra API thật bằng `llm-check --probe`: [ASR_IMPROVEMENT_WORKFLOW.md](docs/experiments/ASR_IMPROVEMENT_WORKFLOW.md).
 
-[Kết quả vòng cải thiện 1](document/ASR_IMPROVEMENT_ROUND1_2026-10-26.md): beam 3 chỉ cải thiện nhẹ trên dev; beam 5 có lỗi lặp text trên AMI. Giữ beam 1 mặc định, chưa fine-tune.
+[Kết quả vòng cải thiện 1](docs/experiments/ASR_IMPROVEMENT_ROUND1_2026-10-26.md): beam 3 chỉ cải thiện nhẹ trên dev; beam 5 có lỗi lặp text trên AMI. Giữ beam 1 mặc định, chưa fine-tune.
 
 Cấu hình LLM mặc định là endpoint HTTP định dạng OpenAI + `gemini-3-flash`, chọn sau khi so các model Gemini trên biên bản họp thật. Điền `MEETING_LLM_BASE_URL`/`MEETING_LLM_API_KEY` và bật LLM trong `.env` để sử dụng. Model khác dùng được qua `MEETING_LLM_MODEL`; với DeepSeek trên Alibaba nên giữ `MEETING_LLM_ENABLE_THINKING=false`.
 
-**CLI, API và Docker mặc định dùng DiariZen + DiCoW** qua `configs/default.yaml`; `configs/dicow-author.yaml` là profile tương đương để gọi tường minh. Runtime tác giả tách khỏi môi trường ứng dụng; xem [DICOW.md](DICOW.md). `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` chỉ dùng khi chủ động chạy đối chứng.
+**CLI, API và Docker mặc định dùng DiariZen + DiCoW** qua `configs/default.yaml`; `configs/dicow-author.yaml` là profile tương đương để gọi tường minh. Runtime tác giả tách khỏi môi trường ứng dụng; xem [DICOW.md](docs/DICOW.md). `configs/baseline-phowhisper.yaml` và `configs/improved-ecapa.yaml` chỉ dùng khi chủ động chạy đối chứng.
 
-Hướng phát triển đã thống nhất: DiCoW làm hướng nghiên cứu chính, giữ hệ cũ làm baseline. Đọc [CONTEXT.md](CONTEXT.md) để tiếp tục từ quyết định, kết quả và công việc còn lại của phiên 12/10/2026.
+Hướng phát triển đã thống nhất: DiCoW làm hướng nghiên cứu chính, giữ hệ cũ làm baseline.
 
 ## Chạy bằng Docker
 
@@ -112,4 +112,4 @@ uv run --no-sync meeting-asr correct-transcript results/demo/transcript.json \
   --out results/demo/correction-suggestions.json
 ```
 
-Xem [hướng dẫn hiệu chỉnh và phép so sánh dev](document/LLM_CORRECTION_2026-10-22.md). Gợi ý giữ hash của text nguồn và cần người nghe kiểm tra trước khi chấp nhận.
+Xem [hướng dẫn hiệu chỉnh và phép so sánh dev](docs/experiments/LLM_CORRECTION_2026-10-22.md). Gợi ý giữ hash của text nguồn và cần người nghe kiểm tra trước khi chấp nhận.

@@ -29,7 +29,6 @@ web/test-results/
 
 # Generated project artifacts
 .cache/
-docs/
 data/
 results/*
 !results/experiments.csv

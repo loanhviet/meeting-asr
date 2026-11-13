@@ -28,7 +28,7 @@ Health có `ask_enabled`; cấu hình provider/model/key và `llm.enabled` dùng
 
 ## Audio và bộ nghiệm thu tổng hợp
 
-[Dataset](tests/fixtures/askmeeting.json) có 12 lượt nói, hai speaker, 14 câu hỏi: 8 câu có đáp án và 6 câu thiếu bằng chứng. Các trường hợp gồm owner, deadline bị đính chính, đề xuất chưa chốt, vấn đề còn mở, người phụ trách chưa được giao, ngân sách chưa có số tiền và câu hỏi yêu cầu đoán.
+[Dataset](../tests/fixtures/askmeeting.json) có 12 lượt nói, hai speaker, 14 câu hỏi: 8 câu có đáp án và 6 câu thiếu bằng chứng. Các trường hợp gồm owner, deadline bị đính chính, đề xuất chưa chốt, vấn đề còn mở, người phụ trách chưa được giao, ngân sách chưa có số tiền và câu hỏi yêu cầu đoán.
 
 Script tạo giọng tiếng Việt bằng Edge TTS qua module demo hiện có, lưu cache và ghép bản rõ, nhiễu trắng 10 dB, nói chồng. Các bản dùng cùng hội thoại; không phải ba cuộc họp độc lập. Timestamp tham chiếu là khoảng ghép clip TTS, không phải nhãn lời nói người thật. Transcript dùng để kiểm tra hỏi đáp là kịch bản gốc, không phải kết quả ASR.
 
@@ -70,6 +70,6 @@ Kiểm tra câu trả lời, trích đoạn, seek đúng turn, HTTP audio range 
 
 ## Thiết kế và kiểm thử
 
-[Figma AskMeeting](https://www.figma.com/design/wxI9RqXMlKkz49Mygb90mz?node-id=53-2) có 6 trạng thái mới, cộng với 17 màn hình trước thành 23. Navigation Hỏi đáp đã cập nhật trên các màn hình cuộc họp cũ. Xem [danh sách màn hình](web/design/README.md).
+[Figma AskMeeting](https://www.figma.com/design/wxI9RqXMlKkz49Mygb90mz?node-id=53-2) có 6 trạng thái mới, cộng với 17 màn hình trước thành 23. Navigation Hỏi đáp đã cập nhật trên các màn hình cuộc họp cũ. Xem [danh sách màn hình](../web/design/README.md).
 
 Kiểm thử Python bao phủ retrieval, ID giả/trùng, retry, nguồn cần soát, persistence/cache, sửa đồng thời, snapshot DB và thông báo lỗi không chứa transcript. Playwright bao phủ câu trả lời có nguồn, nghe lại, sửa/hỏi lại, thiếu bằng chứng, LLM tắt, revision conflict, pending và mobile.

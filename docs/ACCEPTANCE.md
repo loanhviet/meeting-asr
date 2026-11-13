@@ -1,6 +1,6 @@
 # Nghiệm thu dữ liệu, model và biên bản
 
-Trạng thái và bằng chứng gần nhất: [RELEASE_STATUS.md](RELEASE_STATUS.md). Các lệnh dưới đây chạy từ thư mục repo; luôn dùng thư mục output mới cho mỗi phiên bản dữ liệu. `build-dataset` từ chối ghi đè một bộ đã có `sessions.json`.
+Trạng thái và bằng chứng gần nhất: [RELEASE_STATUS.md](https://github.com/loanhviet/meeting-asr/blob/0b641e4/RELEASE_STATUS.md). Các lệnh dưới đây chạy từ thư mục repo; luôn dùng thư mục output mới cho mỗi phiên bản dữ liệu. `build-dataset` từ chối ghi đè một bộ đã có `sessions.json`.
 
 ## 1. Nhãn tiếng nói và ngữ cảnh ASR
 
@@ -75,7 +75,7 @@ uv run --no-sync meeting-asr llm-check
 
 Lệnh chỉ kiểm tra cấu hình, không gửi request hoặc in key. Provider/model/endpoint/key lấy từ cấu hình đã chọn trong `.env`. `llm.max_output_tokens` mặc định 1800; timeout được báo thành lỗi riêng. Chỉ `--provider configured` mới gửi nội dung tới provider.
 
-Tạo manifest riêng theo [examples/meeting-acceptance.json](examples/meeting-acceptance.json), thay đường dẫn, nguồn và điều kiện sử dụng. Mỗi câu có đáp án cần `answer` và `source_turn_ids` có thật trong transcript; câu thiếu bằng chứng dùng `status: not_found`, `answer: null`, nguồn rỗng.
+Tạo manifest riêng theo [examples/meeting-acceptance.json](../examples/meeting-acceptance.json), thay đường dẫn, nguồn và điều kiện sử dụng. Mỗi câu có đáp án cần `answer` và `source_turn_ids` có thật trong transcript; câu thiếu bằng chứng dùng `status: not_found`, `answer: null`, nguồn rỗng.
 
 ```bash
 uv run --no-sync meeting-asr evaluate-meetings data/real/acceptance.json --out results/real-retrieval
@@ -102,4 +102,4 @@ MEETING_LLM_ENABLED=false uv run --no-sync meeting-asr benchmark-suite data/real
 
 `suite.json`/`suite.csv` ghi thời lượng, RTF, từng stage, phiên bản, device và peak allocated VRAM. Mặc định bỏ qua cache; `--cached` cho phép cache và ghi rõ chế độ. Chạy CPU không đọc VRAM của GPU nhàn rỗi. Đo một lượt có thể gồm chi phí khởi tạo model; không suy ra p95 hay khả năng chịu nhiều người dùng từ một lượt.
 
-Hướng dẫn Docker: [README.md](README.md). CPU là image mặc định, GPU dùng target riêng. CI kiểm tra phần mềm và Compose CPU, không tải model gated hoặc gọi LLM có phí. Khi bàn giao, backup `docs/`, manifest/nhãn và artifact cần trích trong báo cáo; audio, model cache và `.env` nằm ngoài Git. Chuẩn bị video 2–3 phút: upload → sửa lượt khó → xem nguồn biên bản → hỏi đáp → export.
+Hướng dẫn Docker: [README.md](../README.md). CPU là image mặc định, GPU dùng target riêng. CI kiểm tra phần mềm và Compose CPU, không tải model gated hoặc gọi LLM có phí. Khi bàn giao, backup `docs/`, manifest/nhãn và artifact cần trích trong báo cáo; audio, model cache và `.env` nằm ngoài Git. Chuẩn bị video 2–3 phút: upload → sửa lượt khó → xem nguồn biên bản → hỏi đáp → export.

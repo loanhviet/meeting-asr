@@ -1,6 +1,6 @@
 # Biên bản có dẫn chứng và soát transcript
 
-Thiết kế toàn bộ giao diện, bao gồm cả luồng cũ và mới: [Figma và danh sách 23 màn hình](web/design/README.md).
+Thiết kế toàn bộ giao diện, bao gồm cả luồng cũ và mới: [Figma và danh sách 23 màn hình](../web/design/README.md).
 
 ## Biên bản có dẫn chứng
 

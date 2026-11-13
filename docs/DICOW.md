@@ -51,7 +51,7 @@ Mỗi output giữ `diarization.rttm` gốc để chấm DER; `transcript.json` 
 python scripts/compare_dicow.py results/real-source-check/haveasip_13_giang_oi results/dicow-author/haveasip_13 --out results/dicow-author/comparison-haveasip.json
 ```
 
-Script kiểm tra hai lượt dùng cùng audio. WER/cpWER/DER để null khi chưa có nhãn chuẩn của đúng đoạn thử. Transcript đầy đủ COSV không chấm được trực tiếp đoạn 5 phút; phụ đề YouTube tự động không là ground truth. [Báo cáo so sánh chất lượng](DICOW_COMPARISON.md) bổ sung sáu mẫu VIVOS ghép có reference chữ và bốn mẫu đối chứng cấp cùng nhãn người nói cho cả hai hệ; DER pilot chỉ là sơ bộ vì biên speech chưa được nghe duyệt.
+Script kiểm tra hai lượt dùng cùng audio. WER/cpWER/DER để null khi chưa có nhãn chuẩn của đúng đoạn thử. Transcript đầy đủ COSV không chấm được trực tiếp đoạn 5 phút; phụ đề YouTube tự động không là ground truth. [Báo cáo so sánh chất lượng](https://github.com/loanhviet/meeting-asr/blob/0b641e4/DICOW_COMPARISON.md) bổ sung sáu mẫu VIVOS ghép có reference chữ và bốn mẫu đối chứng cấp cùng nhãn người nói cho cả hai hệ; DER pilot chỉ là sơ bộ vì biên speech chưa được nghe duyệt.
 
 Đây là so sánh **hệ thống** DiariZen+DiCoW với Pyannote+PhoWhisper. Để tách đóng góp conditioning, bước tiếp theo là đối chứng Whisper large-v3-turbo và DiCoW trên cùng diarization/oracle. Adapter đã nhận `--oracle-rttm` để đưa nhãn chuẩn vào STNO; không đưa nhãn chuẩn vào inference thông thường.
 
@@ -71,7 +71,7 @@ Máy kiểm thử chưa cài NVIDIA Container Toolkit, nên chưa nghiệm thu i
 
 ## Colab
 
-[Notebook inference](notebooks/dicow_author_inference.ipynb) dùng cùng adapter và các revision trên. Lấy code trên máy khác bằng `git clone --branch feat/dicow-author-pipeline https://github.com/loanhviet/meeting-asr.git`, rồi cài runtime theo phần trên. Dữ liệu audio, trọng số, kết quả và bundle không nằm trong Git; các đường dẫn artifact trong báo cáo so sánh trỏ tới file local. Muốn dùng notebook Colab, chuẩn bị các sample audio tại đúng đường dẫn rồi tạo bundle để upload:
+[Notebook inference](../notebooks/dicow_author_inference.ipynb) dùng cùng adapter và các revision trên. Lấy code trên máy khác bằng `git clone --branch feat/dicow-author-pipeline https://github.com/loanhviet/meeting-asr.git`, rồi cài runtime theo phần trên. Dữ liệu audio, trọng số, kết quả và bundle không nằm trong Git; các đường dẫn artifact trong báo cáo so sánh trỏ tới file local. Muốn dùng notebook Colab, chuẩn bị các sample audio tại đúng đường dẫn rồi tạo bundle để upload:
 
 ```bash
 python scripts/package_dicow_colab.py --include-samples

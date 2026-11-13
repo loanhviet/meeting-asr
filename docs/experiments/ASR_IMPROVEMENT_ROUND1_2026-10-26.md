@@ -131,7 +131,7 @@ từ utterance bằng `character_based` cho reference và
 - Chuẩn bị dữ liệu có checksum, xác nhận official dev, giữ utterance AMI.
 - Grid khóa input/config/rule; resume chỉ dùng lại inference khớp audio và
   config, sau đó chấm lại. Nhãn tham chiếu ở scorer, không vào worker.
-- Profile [recommended-dicow-round1.yaml](../configs/recommended-dicow-round1.yaml)
+- Profile [recommended-dicow-round1.yaml](../../configs/recommended-dicow-round1.yaml)
   chọn beam 3 để thử tiếp; `configs/default.yaml` giữ beam 1.
 - `llm-check --probe` gửi một prompt tĩnh, tối đa 512 output tokens, timeout
   20 giây, không retry, không gửi transcript người dùng. Chỉ dùng **một**
