@@ -1,0 +1,27 @@
+---
+title: 14 - Job Lifecycle State Machine
+---
+stateDiagram-v2
+ [*] --> queued: Valid upload / create pipeline job
+ queued --> running: Worker selects job
+ running --> complete: Work returns and finalization succeeds
+ running --> failed: Uncaught exception / save error
+ running --> queued: Worker restart / recover interrupted job
+ failed --> queued: POST retry / preserve current kind
+ complete --> queued: POST summary [result exists and LLM enabled]
+ failed --> queued: POST summary [result exists and LLM enabled]
+ note right of queued
+  kind=pipeline: stages M1-M5 and optional M6
+  kind=summary: M6 only
+  POST summary sets kind=summary
+ end note
+ note right of running
+  status=running does not identify a stage
+  Pipeline cache hits may skip model work
+  Worker owns a process file lock per store root
+ end note
+ note right of complete
+  Initial caught M6 error may still complete
+  Regeneration exceptions result in failed
+  Edits change revision, not job status
+ end note

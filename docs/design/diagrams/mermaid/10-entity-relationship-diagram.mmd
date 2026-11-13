@@ -1,0 +1,58 @@
+---
+title: 10 - Entity Relationship Diagram
+---
+erDiagram
+ direction LR
+ jobs ||..o{ edits : "job_id (application)"
+ jobs ||..o{ speaker_assignments : "job_id (application)"
+ jobs ||..o{ speakers : "job_id (application)"
+ jobs ||..o{ edit_events : "job_id (application)"
+ jobs ||..o{ ask_answers : "job_id (application)"
+ jobs {
+  TEXT id PK
+  TEXT filename
+  TEXT source
+  TEXT status
+  TEXT stage
+  REAL progress
+  TEXT error "nullable"
+  REAL created
+  INTEGER revision
+  INTEGER summary_revision "nullable"
+  TEXT kind
+  TEXT summary_json "nullable"
+  TEXT summary_error "nullable"
+  TEXT summary_template "added at startup; nullable"
+ }
+ edits {
+  TEXT job_id PK "composite primary key"
+  TEXT turn_id PK
+  TEXT text "nullable"
+  INTEGER reviewed
+ }
+ speaker_assignments {
+  TEXT job_id PK "composite primary key"
+  TEXT turn_id PK
+  TEXT speaker
+ }
+ speakers {
+  TEXT job_id PK "composite primary key"
+  TEXT speaker PK
+  TEXT name
+ }
+ edit_events {
+  INTEGER id PK "autoincrement"
+  TEXT job_id
+  INTEGER revision
+  TEXT kind
+  REAL created
+  TEXT changes "JSON text"
+ }
+ ask_answers {
+  INTEGER id PK "autoincrement"
+  TEXT job_id "unique together with request_key"
+  INTEGER revision
+  REAL created
+  TEXT request_key "unique together with job_id"
+  TEXT payload "JSON text"
+ }

@@ -1,0 +1,77 @@
+---
+title: 13 - Domain Model Class Diagram
+---
+classDiagram
+ direction LR
+ class AudioBundle {
+  +ndarray waveform
+  +int sr
+  +int original_sr
+  +str source_path
+  +str normalization_method
+  +list~str~ warnings
+  +float duration
+ }
+ class Segment {
+  +float start
+  +float end
+  +str speaker
+  +float duration
+ }
+ class Utterance {
+  +str text
+  +ASRSignals asr
+  +DiarSignals diar
+ }
+ class ASRSignals {
+  +Optional~float~ avg_logprob
+  +Optional~float~ no_speech_prob
+  +Optional~float~ compression_ratio
+  +Optional~float~ min_token_logprob
+  +bool was_split
+ }
+ class DiarSignals {
+  +float overlap_ratio
+  +Optional~float~ cluster_margin
+  +Optional~int~ n_windows
+ }
+ class TranscriptDocument {
+  +str audio_id
+  +float duration
+  +int sample_rate
+  +str config_hash
+  +int num_speakers
+ }
+ class Turn {
+  +str turn_id
+  +float start
+  +float end
+  +str speaker
+  +str text
+  +Optional~float~ confidence
+  +bool flagged
+  +list~str~ flag_reasons
+ }
+ class MeetingMinutes {
+  +str audio_id
+  +float duration
+  +int num_speakers
+  +float flagged_ratio
+  +Optional~str~ summary
+  +list~str~ topics
+  +list~dict~ summary_points
+  +list~dict~ decisions
+  +list~dict~ action_items
+ }
+ class DiarizationResult {
+  +str backend
+  +Optional~list~ overlap_regions
+ }
+ Segment <|-- Utterance
+ Utterance --> "1" ASRSignals : asr
+ Utterance --> "0..1" DiarSignals : diar
+ TranscriptDocument --> "0..*" Utterance : utterances
+ Turn --> "0..*" Utterance : utterances
+ MeetingMinutes --> "0..*" Turn : turns
+ DiarizationResult --> "0..*" Segment : segments
+ DiarizationResult --> "0..*" DiarSignals : signals

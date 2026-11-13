@@ -1,0 +1,42 @@
+---
+title: 16 - DiCoW Inference Sequence Diagram
+---
+sequenceDiagram
+ autonumber
+ participant P as Pipeline
+ participant B as DiCoW bridge
+ participant R as Author runtime child process
+ participant DZ as DiariZenPipeline
+ participant DC as DiCoWPipeline
+ participant HF as Hugging Face Hub / cache
+ P->>B: recognize_author(AudioBundle, config, destination)
+ B->>B: Validate pinned code commits and clean inference files
+ B->>B: Write temporary prepared.wav and request.json
+ B->>R: Spawn author Python with dicow_runner.py --request
+ alt Oracle RTTM provided
+  R->>R: Build annotation from supplied RTTM
+ else Predicted diarization
+  R->>HF: Load pinned DiariZen + WeSpeaker checkpoints
+  R->>DZ: diarizer(full audio)
+  DZ-->>R: Annotation
+  R->>R: Delete diarizer / gc / clear unused CUDA cache
+ end
+ R->>R: Normalize labels to SPEAKER_00, SPEAKER_01, ...
+ R-->>B: stdout progress event M3
+ B-->>P: Progress callback M3
+ R->>HF: Load pinned DiCoW model, tokenizer and features
+ R->>DC: Construct pipeline with fixed annotation
+ R->>DC: preprocess(audio) once, when speakers exist
+ DC-->>R: Input features and per-speaker STNO masks
+ loop Each target speaker
+  R->>DC: _forward(target slice, timestamps, language, beams)
+  DC-->>R: Generated tokens
+  R->>DC: postprocess_text(decoded timestamp tokens)
+  DC-->>R: Timestamped text
+ end
+ R->>R: Write author-output.json and provenance
+ R-->>B: Exit / bridge reads output file
+ B->>B: Parse generated timestamps and overlap signals
+ B-->>P: DiarizationResult, utterances, metadata, raw
+ P->>P: Build TranscriptDocument / write artifacts and joint cache
+ Note over R,DC: STNO / FDDT internals belong to pinned upstream code.<br/>No training step or standalone inference network service.

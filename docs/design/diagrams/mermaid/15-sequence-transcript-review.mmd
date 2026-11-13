@@ -1,0 +1,33 @@
+---
+title: 15 - Transcript Review Sequence Diagram
+---
+sequenceDiagram
+ autonumber
+ participant UI as TurnEditor / SpeakersDialog
+ participant API as FastAPI
+ participant Store as JobStore
+ participant DB as SQLite
+ participant Disk as Original minutes.json
+ UI->>API: PATCH /api/jobs/{id}/turns/{turn_id}<br/>{text, speaker_id, speaker_name, reviewed, expected_revision}
+ API->>Store: edit(job_id, turn_id, update)
+ Store->>Disk: Load original minutes to validate turn / speaker
+ Disk-->>Store: Original turn IDs and speaker IDs
+ Store->>DB: BEGIN IMMEDIATE / check expected_revision
+ alt Revision mismatch
+  DB-->>Store: Current revision differs
+  Store-->>API: RevisionConflict
+  API-->>UI: HTTP 409 reload message
+ else Revision matches
+  Store->>DB: Upsert edits, speaker_assignments and/or speakers
+  alt Review-only / no content change
+   Store->>DB: Advance summary_revision only if summary was current
+  else Text, speaker assignment or display name changed
+   Store->>DB: Keep old summary_revision
+  end
+  Store->>DB: Increment revision / append edit_events / commit
+  Store->>Store: result(): read snapshot + original JSON<br/>apply overlays / derive stale / resolve evidence
+  Store-->>API: Current ResultView
+  API-->>UI: HTTP 200 edited view
+ end
+ Note over Store,Disk: Edits do not overwrite original minutes.json.
+ Note over UI,DB: UI sends expected_revision / PATCH schema allows omission.<br/>Speaker merge requires expected_revision in the API schema.

@@ -1,0 +1,50 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam componentStyle uml2
+skinparam dpi 144
+skinparam packageBackgroundColor #F1F5F9
+skinparam rectangleBackgroundColor #EFF6FF
+skinparam componentBackgroundColor #EFF6FF
+skinparam usecaseBackgroundColor #EFF6FF
+skinparam activityBackgroundColor #EFF6FF
+skinparam activityDiamondBackgroundColor #FEF3C7
+skinparam noteBackgroundColor #F0FDFA
+skinparam noteBorderColor #0F766E
+title 17 - Frontend Component Diagram
+left to right direction
+package "Next.js application" {
+ component "app/page.tsx" as Page
+ package "Browser React modules" {
+  component "MeetingApp" as App
+  component "MeetingPlayer" as Player
+  component "MinutesPanel" as Minutes
+  component "AskMeetingPanel" as Ask
+  component "ReviewControls\nTurnEditor / SpeakersDialog /\nHistoryDialog / Modal" as Review
+  component "lib/api.ts\nrequest(), types and API base" as Client
+ }
+}
+component "FastAPI /api/*" as API
+Page ..> App : imports
+App ..> Player : renders / audio ref
+App ..> Minutes : renders / source navigation
+App ..> Ask : renders / source navigation
+App ..> Review : renders / edit callbacks
+App ..> Client : jobs / health / poll / upload
+Minutes ..> Client : regenerate minutes
+Ask ..> Client : questions and history
+Review ..> Client : edits / merges / history
+Player ..> Client : imports API base / time helper
+Client --> API : HTTP fetch
+App --> API : export links
+Player --> API : audio src
+note bottom of Client
+ Compose: empty API base; Next.js rewrite.
+ Local env example: http://127.0.0.1:8000.
+end note
+@enduml

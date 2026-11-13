@@ -1,0 +1,27 @@
+---
+title: 06 - Meeting Processing Data Flow Diagram
+---
+flowchart TB
+ U["E1 Meeting reviewer"]
+ H["E2 Hugging Face Hub"]
+ L["E3 Configured LLM endpoint"]
+ P1(["1.0 Ingest audio"])
+ P2(["2.0 Preprocess,<br/>diarize and transcribe"])
+ P3(["3.0 Build turns, score<br/>and summarize minutes"])
+ D1[("D1 SQLite<br/>Job metadata")]
+ D2[("D2 Job files<br/>Audio and artifacts")]
+ U -->|Audio and filename| P1
+ P1 -->|Job identifier| U
+ P1 -->|Queued job metadata| D1
+ P1 -->|Original audio| D2
+ D1 -->|Job identifier and source path| P2
+ D2 -->|Original audio| P2
+ P2 -->|Checkpoint identifiers and revisions| H
+ H -->|Checkpoint files| P2
+ P2 -->|RTTM, transcript and provenance| D2
+ P2 -->|Utterances and signals| P3
+ P3 -->|Summary prompt and source text| L
+ L -->|Completion JSON| P3
+ P3 -->|Minutes and run metadata| D2
+ P2 -->|Stage and progress| D1
+ P3 -->|Final status and summary error| D1

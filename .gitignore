@@ -29,7 +29,21 @@ web/test-results/
 
 # Generated project artifacts
 .cache/
-docs/
+# docs/: only the curated markdown guides and docs/experiments/ are tracked.
+# Local-only material (submission, diagrams, specs, PDFs, notes) stays untracked.
+docs/*
+!docs/*.md
+!docs/experiments/
+!docs/design/
+docs/CONTEXT.md
+docs/PLAN.md
+docs/CSE457*
+# Legacy local notes/audio (tracked experiment reports moved to docs/experiments/)
+document/
 data/
 results/*
 !results/experiments.csv
+
+# Local agent instruction files
+AGENTS.md
+CLAUDE.md

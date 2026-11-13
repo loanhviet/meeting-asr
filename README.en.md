@@ -13,7 +13,7 @@ A local application that turns Vietnamese meeting recordings into speaker-attrib
 - Versioned speech annotations, an offline listening/review page, speech-based simulation and dataset readiness checks.
 - RQ1–RQ3 evaluation and benchmark reports including per-stage time and peak allocated GPU memory.
 
-See the [architecture](ARCHITECTURE.md), [DiCoW setup](DICOW.md), [quality evidence and limitations](DICOW_COMPARISON.md), and [acceptance workflow](ACCEPTANCE.md). `RELEASE_STATUS.md` records the earlier baseline release.
+All design, test, deployment and user documentation lives in [docs/](docs/). See the [architecture](docs/design/README.md), [DiCoW setup](docs/DICOW.md), [quality evidence and limitations](https://github.com/loanhviet/meeting-asr/blob/0b641e4/DICOW_COMPARISON.md), and [acceptance workflow](docs/ACCEPTANCE.md).
 
 ## Run locally
 
@@ -49,4 +49,4 @@ npm run test:e2e
 
 Software tests use deterministic fixtures; they do not establish model quality. The speech labels and main experimental matrices generated locally are drafts pending listening review and adequate recording durations. Synthetic conversations support functional evaluation, while real meeting acceptance remains necessary. The project uses pretrained inference rather than model fine-tuning; it currently serves a local, single-worker demo without multi-user authentication.
 
-Audio, model caches, credentials and generated reports remain outside Git. Local `docs/` also requires a separate backup. The Vietnamese [testing guide](TESTING.md) provides environment and reproduction details.
+Audio, model caches, credentials and generated reports remain outside Git. The Vietnamese [testing guide](docs/TESTING.md) provides environment and reproduction details.

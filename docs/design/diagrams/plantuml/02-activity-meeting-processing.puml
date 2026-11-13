@@ -1,0 +1,62 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam componentStyle uml2
+skinparam dpi 144
+skinparam packageBackgroundColor #F1F5F9
+skinparam rectangleBackgroundColor #EFF6FF
+skinparam componentBackgroundColor #EFF6FF
+skinparam usecaseBackgroundColor #EFF6FF
+skinparam activityBackgroundColor #EFF6FF
+skinparam activityDiamondBackgroundColor #FEF3C7
+skinparam noteBackgroundColor #F0FDFA
+skinparam noteBorderColor #0F766E
+title 02 - Meeting Processing Activity Diagram
+start
+partition "FastAPI" {
+ :Receive audio upload;
+ if (Suffix, size and nonempty checks pass?) then (yes)
+  :Persist audio and create queued job;
+  :Return HTTP 202 with job_id;
+ else (no)
+  :Return HTTP 400, 413 or 415;
+  stop
+ endif
+}
+partition "JobWorker thread" {
+ :Select oldest queued job;
+ :Set status = running;
+ :Run M1-M5 using selected engine\nand valid stage caches;
+ if (Uncaught processing exception?) then (yes)
+  :Set status = failed and save error;
+  stop
+ endif
+ if (LLM enabled?) then (yes)
+  :Run M6 summary generation;
+  if (Caught M6 validation / runtime error?) then (yes)
+   :Record summary_error; retain transcript;
+  elseif (Other uncaught M6 exception?) then (yes)
+   :Set status = failed and save error;
+   stop
+  else (no)
+   :Attach validated summary;
+  endif
+ endif
+ :Write minutes.json, summary_status.json\nand run.json;
+ if (Uncaught write / finalization exception?) then (yes)
+  :Set status = failed and save error;
+  stop
+ endif
+ :Set status = complete;
+}
+partition "Browser UI" {
+ :Read status and available result by polling;
+ :Listen, review, ask or export;
+}
+stop
+@enduml

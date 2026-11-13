@@ -1,0 +1,56 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam ArrowColor #334155
+skinparam componentStyle uml2
+skinparam dpi 144
+skinparam packageBackgroundColor #F1F5F9
+skinparam rectangleBackgroundColor #EFF6FF
+skinparam componentBackgroundColor #EFF6FF
+skinparam usecaseBackgroundColor #EFF6FF
+skinparam activityBackgroundColor #EFF6FF
+skinparam activityDiamondBackgroundColor #FEF3C7
+skinparam noteBackgroundColor #F0FDFA
+skinparam noteBorderColor #0F766E
+title 05 - Backend Component Diagram
+top to bottom direction
+package "Backend application" {
+ component "REST routes and lifespan\napi.py" as Routes
+ component "JobStore\njobs.py" as Store
+ component "JobWorker\njobs.py" as Worker
+ component "Pipeline orchestration\npipeline.py" as Pipe
+ component "Preprocess / postprocess /\nconfidence / cache" as Stages
+ component "DiCoW bridge\ndicow.py" as Bridge
+ component "Cascaded baseline\ndiarization.py + asr.py" as Base
+ component "Summarizer and HTTPProvider\nsummarize.py" as Sum
+ component "AskMeeting\nask.py" as Ask
+ component "Export functions\nexport.py" as Export
+}
+node "Child Python process\nauthor runtime" {
+ component "dicow_runner.py\nDiariZen + DiCoW" as Runner
+}
+database "SQLite" as DB
+folder "Audio, artifacts\nand stage caches" as Disk
+cloud "Configured LLM endpoint" as LLM
+Routes ..> Worker : start / stop
+Routes --> Store : jobs and edited views
+Routes --> Ask : answer synchronously
+Routes --> Export : export edited view
+Worker --> Store : select / update jobs
+Worker --> Pipe : pipeline jobs
+Worker --> Sum : summary-only jobs
+Pipe --> Stages : M1 / M4 / M5 / cache
+Pipe --> Bridge : default M2-M3
+Pipe --> Base : explicit baseline
+Pipe --> Sum : optional initial M6
+Bridge --> Runner : spawn / JSON / stdout events
+Ask --> Sum : reuse provider adapter
+Sum --> LLM : completion request
+Store --> DB : metadata / overlays
+Store --> Disk : read minutes.json
+Pipe --> Disk : write artifacts / caches
+@enduml

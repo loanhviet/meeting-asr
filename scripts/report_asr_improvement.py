@@ -133,7 +133,7 @@ def build_evidence(out):
             "new_download_bytes": sum(
                 r["bytes"]
                 for r in json.loads(
-                    (PROJECT_ROOT / "document/asr_improvement_sources.lock.json").read_text()
+                    (PROJECT_ROOT / "docs/experiments/asr_improvement_sources.lock.json").read_text()
                 )
             ),
         },
