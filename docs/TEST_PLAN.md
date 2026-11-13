@@ -29,7 +29,7 @@ Lệnh nhanh trên chạy toàn bộ `tests/` theo cấu hình pytest. Một s�
 khi thiếu dependency tùy chọn; xem kết quả thực tế trong báo cáo chạy test.
 Chạy riêng một nhóm: `uv run --no-sync pytest -q tests/test_api.py`.
 
-Các kiểm tra phần mềm khác đã có trong TESTING.md, chưa chạy trong lượt này:
+Các kiểm tra phần mềm khác (lint, build, web; kết quả mới nhất trong [TEST_REPORT.md](TEST_REPORT.md)):
 
 ```bash
 uv run --no-sync ruff check src/meeting_asr tests

@@ -86,7 +86,7 @@ Runtime tác giả nằm ở `.cache/dicow` khi chạy local, `/opt/dicow` trong
 
 | Quyết định | Lý do/ngữ cảnh |
 | --- | --- |
-| DiariZen + DiCoW là luồng chính | Theo hướng nghiên cứu transcript theo người nói và overlap đã chốt trong [ARCHITECTURE.md](ARCHITECTURE.md). |
+| DiariZen + DiCoW là luồng chính | Theo hướng nghiên cứu transcript theo người nói và overlap đã chốt, xem [README](../README.md) và [ARCHITECTURE.md](ARCHITECTURE.md). |
 | Dùng checkpoint MLC pretrained | Có checkpoint đa ngôn ngữ; tích hợp inference, chưa fine-tune hoặc tái lập toàn benchmark paper. |
 | Giữ Pyannote/ECAPA + PhoWhisper | Là baseline đối chứng tường minh, không phải cấu hình mặc định. |
 | Tách runtime tác giả | Giữ dependency/pin riêng khỏi môi trường app; xem [DICOW.md](DICOW.md). |

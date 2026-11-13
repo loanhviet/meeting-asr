@@ -230,9 +230,9 @@ không dùng timing của chúng để kết luận thông lượng hoặc SLA.
 
 Gốc artifact: `results/general-meetings-20261026/v1/`.
 
-![Tổng quan chất lượng theo từng tập và tác vụ](../results/general-meetings-20261026/v1/quality-overview.png)
+Biểu đồ tổng quan chất lượng theo từng tập và tác vụ: `quality-overview.png` (artifact cục bộ, không nằm trong git).
 
-![Đối chứng nhận chữ trên cùng DiariZen](../results/general-meetings-20261026/v1/asr-control-comparison.png)
+Biểu đồ đối chứng nhận chữ trên cùng DiariZen: `asr-control-comparison.png` (artifact cục bộ, không nằm trong git).
 
 - `selection.json`, `config.yaml`: lựa chọn trước dự đoán, checksum, config, code/model pins.
 - `summary.json`, `scores.jsonl`, `diagnostics.json`: điểm, mẫu số và phân tích.

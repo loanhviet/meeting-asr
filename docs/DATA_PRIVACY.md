@@ -6,7 +6,7 @@ Tài liệu này mô tả luồng được thể hiện trong code/cấu hình h
 
 | Dữ liệu | Xử lý / lưu trữ theo code |
 |---|---|
-| Audio WAV/MP3/M4A | API nhận file tối đa 200 MB, ghi vào thư mục job trong `data/`; API phát lại file này. Pipeline có thể tạo cache và artifact kết quả. |
+| Audio WAV/MP3/M4A | API nhận file tối đa 200 MiB, ghi vào `results/jobs/{job_id}/audio.*`; API phát lại file này. Pipeline có thể tạo cache và artifact kết quả. |
 | Transcript, timestamp, speaker ID, cờ soát | Kết quả pipeline/artifact; bản sửa text, trạng thái đã soát, gán speaker, tên speaker và lịch sử sửa lưu qua `jobs.sqlite3`. |
 | Biên bản, việc, người tham dự, tiêu đề, trạng thái job | Thông tin job và kết quả trong SQLite/artifact. Người tham dự được nhập qua API. |
 | Câu trả lời Hỏi cuộc họp | Lịch sử payload và revision lưu trong bảng `ask_answers`; có thư mục `ask-cache`. |

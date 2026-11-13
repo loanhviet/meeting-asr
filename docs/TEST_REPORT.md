@@ -39,11 +39,24 @@ Warning: `StarletteDeprecationWarning` từ `fastapi/testclient.py`: dùng `http
 với `starlette.testclient` đã deprecated; thông báo đề nghị cài `httpx2`.
 Không có test failure hoặc collection error trong lượt này.
 
+## Kiểm tra bổ sung (cùng ngày)
+
+| Kiểm tra | Lệnh | Kết quả |
+|---|---|---|
+| Lint Python | `uv run --no-sync ruff check src/meeting_asr tests` | Đạt |
+| Format Python | `uv run --no-sync ruff format --check src/meeting_asr tests` | Đạt, 79 file |
+| Web typecheck | `npm run typecheck` (trong `web/`) | Đạt |
+| Web format | `npm run format:check` | Đạt |
+| Web build | `npm run build` | Đạt |
+| Web e2e | `npm run test:e2e` (Playwright, Chromium) | 12 passed |
+
+`ruff check .` toàn repo báo 7 lỗi I001 trong notebook `notebooks/*.ipynb`; lỗi này có sẵn,
+không thuộc phạm vi lệnh CI ở trên.
+
 ## Phạm vi kết luận và phần còn thiếu
 
-- Bộ Python hiện có đạt với các dependency trên; không chạy ASR/LLM thật.
-- Chưa chạy Ruff, build, web typecheck/format/build, Playwright hoặc Docker
-  trong lượt này; không lấy kết quả lịch sử làm kết quả mới.
-- TODO: cài môi trường inference và scorer riêng để kiểm tra các ca đang skip.
-- TODO: chạy các kiểm tra web và nghiệm thu model/semantic nếu cần xác nhận
+- Các bộ test hiện có đạt với dependency trên; không chạy ASR/LLM thật.
+- Chưa chạy `uv build` và Docker trong lượt này; không lấy kết quả lịch sử làm kết quả mới.
+- TODO: cài môi trường inference và scorer riêng để kiểm tra 6 ca đang skip.
+- TODO: nghiệm thu model/semantic và inference CUDA trong container nếu cần xác nhận
   toàn hệ thống; xem TEST_PLAN.md và EVALUATION_REPORT.md.

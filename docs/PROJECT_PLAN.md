@@ -6,13 +6,13 @@ Các mốc dưới đây lấy từ Git history hiện có (PR merge #1–#5). K
 
 | Giai đoạn | PR / nhánh | Nội dung theo commit |
 |---|---|---|
-| 1. Evidence review workspace | #1 `feat/evidence-review-workspace` | Nền tảng review transcript và biên bản có dẫn chứng. |
+| 1. Evidence review workspace | #1 `feat/evidence-review-workspace` | Nền tảng review transcript và biên bản có dẫn chứng; bộ dữ liệu/đánh giá nghiệm thu; container CPU/GPU. |
 | 2. DiCoW author pipeline | #2 `feat/dicow-author-pipeline` | Tích hợp pipeline DiariZen + DiCoW, runtime/checkpoint được pin. |
 | 3. Sửa chất lượng họp | #3 `feat/meeting-quality-fixes` | Sửa vòng lặp decode và giữ cờ review trên lỗi thật; thêm AskMeeting trả lời theo transcript. |
 | 4. UI redesign | #4 `feat/ui-redesign` | Workspace ưu tiên biên bản, tiêu đề meeting, finalize, sửa action item và overview thư viện. |
 | 5. Participants và ETA | #5 `feat/participants-eta-notify` | ETA dựa trên tốc độ job đã xong, người tham dự, thông báo hoàn thành và copy action list. |
 
-Git có các nhánh feature tương ứng; nhánh hiện tại `loanhviet/check-git-sync-status` ở commit merge #5. Commit history không xác nhận triển khai production.
+Commit history không xác nhận triển khai production.
 
 ## Mốc tiếp theo
 

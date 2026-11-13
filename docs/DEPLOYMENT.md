@@ -44,7 +44,7 @@ docker compose -f compose.yaml -f compose.gpu.yaml ps
 
 Override chọn target `gpu`, runtime Torch CUDA `cu128` và `gpus: all`.
 TODO: xác minh inference CUDA trong container trên máy triển khai;
-[ARCHITECTURE.md](ARCHITECTURE.md) chỉ ghi nhận smoke Docker CPU và GPU host.
+Lần smoke trước ([CONTEXT.md](https://github.com/loanhviet/meeting-asr/blob/0b641e4/CONTEXT.md)) chỉ chạy đoạn 12 giây qua web Docker CPU và qua GPU trên host, chưa chạy CUDA trong container.
 
 ## Biến môi trường và cấu hình
 
